@@ -553,10 +553,22 @@ function createResources() {
     marker.userData = resource;
     marker.visible = false;
 
-    // Resource label
+    // Resource label with smart positioning to prevent overlap
     const label = createResourceLabel(resource);
     label.position.copy(centerPos);
-    label.position.y += 15;
+
+    // Add extra vertical spacing for overlapping polar resources
+    let labelOffset = 15;
+    if (resource.type === 'water' && Math.abs(resource.lat) > 80) {
+      // For polar water deposits, stagger labels based on longitude
+      const lonOffset = (resource.lon + 180) % 360;
+      labelOffset = 15 + (lonOffset / 360) * 30; // Vary from 15 to 45 units
+    } else if (resource.subtype) {
+      // Resources with subtypes need more space
+      labelOffset = 20;
+    }
+
+    label.position.y += labelOffset;
     label.visible = false;
 
     moonGroup.add(outerRing);
@@ -580,8 +592,8 @@ function createResourceLabel(resource) {
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
 
-  // Larger canvas for minerals with subtype
-  const hasSubtype = resource.type === 'minerals' && resource.subtype;
+  // Larger canvas for resources with subtype
+  const hasSubtype = resource.subtype !== undefined;
   canvas.width = 300;
   canvas.height = hasSubtype ? 100 : 80;
 

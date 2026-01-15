@@ -106,42 +106,39 @@ export const MARIA = [
 ];
 
 export const RESOURCES = [
-  // Water Ice deposits (polar regions)
-  { name: "Shackleton Crater", type: "water", lat: -89.9, lon: 0.0, radius: 21, concentration: 0.95 },
-  { name: "Cabeus Crater", type: "water", lat: -85.4, lon: -42.0, radius: 100, concentration: 0.90 },
-  { name: "Haworth Crater", type: "water", lat: -87.5, lon: -4.0, radius: 51, concentration: 0.85 },
-  { name: "Faustini Crater", type: "water", lat: -87.3, lon: 77.0, radius: 39, concentration: 0.82 },
-  { name: "Amundsen Crater", type: "water", lat: -84.3, lon: 85.0, radius: 101, concentration: 0.75 },
-  { name: "Sverdrup Crater", type: "water", lat: -88.2, lon: -153.0, radius: 33, concentration: 0.78 },
-  { name: "de Gerlache Crater", type: "water", lat: -88.5, lon: -87.1, radius: 32, concentration: 0.80 },
+  // Water Ice deposits (polar regions) - consolidated to reduce overlap
+  { name: "South Pole Water Ice", type: "water", subtype: "Permanently Shadowed", lat: -89.0, lon: 0.0, radius: 150, concentration: 0.90, description: "Permanently shadowed regions at south pole including Shackleton, Haworth, and Faustini craters with 5-10% water ice concentration" },
+  { name: "Cabeus Water Ice", type: "water", subtype: "LCROSS Impact Site", lat: -85.4, lon: -42.0, radius: 100, concentration: 0.88, description: "Confirmed by LCROSS impact mission with ~5.6% water ice by mass" },
+  { name: "Southwest Pole Water", type: "water", subtype: "Amundsen Region", lat: -84.8, lon: 85.0, radius: 120, concentration: 0.75, description: "Amundsen crater region with scattered cold traps and potential ice deposits" },
+  { name: "Far South Pole Water", type: "water", subtype: "Sverdrup-de Gerlache", lat: -88.3, lon: -120.0, radius: 90, concentration: 0.78, description: "Connected permanently shadowed regions near lunar south pole" },
   
-  // Helium-3 deposits (mare regions)
-  { name: "Mare Tranquillitatis He-3", type: "helium", lat: 8.5, lon: 31.4, radius: 400, concentration: 0.85 },
-  { name: "Oceanus Procellarum He-3", type: "helium", lat: 18.4, lon: -57.4, radius: 800, concentration: 0.90 },
-  { name: "Mare Imbrium He-3", type: "helium", lat: 32.8, lon: -15.6, radius: 500, concentration: 0.80 },
-  { name: "Mare Serenitatis He-3", type: "helium", lat: 28.0, lon: 17.5, radius: 350, concentration: 0.78 },
-  { name: "Mare Fecunditatis He-3", type: "helium", lat: -7.8, lon: 51.3, radius: 450, concentration: 0.72 },
+  // Helium-3 deposits (mare regions, from solar wind implantation)
+  { name: "Mare Tranquillitatis He-3", type: "helium", subtype: "³He from Solar Wind", lat: 8.5, lon: 31.4, radius: 400, concentration: 0.85, description: "High-Ti basalts with ~15-20 ppb ³He implanted by solar wind over 3.6 billion years" },
+  { name: "Oceanus Procellarum He-3", type: "helium", subtype: "³He, Highest Yield", lat: 18.4, lon: -57.4, radius: 800, concentration: 0.90, description: "Largest mare basin with extensive ilmenite-rich regolith providing maximum ³He yield potential" },
+  { name: "Mare Imbrium He-3", type: "helium", subtype: "³He in Regolith", lat: 32.8, lon: -15.6, radius: 500, concentration: 0.80, description: "Ancient impact basin filled with titanium-bearing basalts accumulating solar wind ³He" },
+  { name: "Mare Serenitatis He-3", type: "helium", subtype: "³He Deposits", lat: 28.0, lon: 17.5, radius: 350, concentration: 0.78, description: "Mare basalts with moderate ³He concentration from extended solar wind exposure" },
+  { name: "Mare Fecunditatis He-3", type: "helium", subtype: "³He Resource", lat: -7.8, lon: 51.3, radius: 450, concentration: 0.72, description: "Eastern mare with consistent ³He distribution in titanium-rich surface materials" },
+
+  // Titanium deposits (ilmenite FeTiO₃ in mare basalts)
+  { name: "Mare Tranquillitatis Ti", type: "titanium", subtype: "High-Ti Basalt (13%)", lat: 8.5, lon: 31.4, radius: 300, concentration: 0.90, description: "Very high titanium basalts with 10-13% TiO₂ in ilmenite (FeTiO₃) and pyroxene" },
+  { name: "Oceanus Procellarum Ti", type: "titanium", subtype: "Ilmenite (FeTiO₃)", lat: 23.0, lon: -51.0, radius: 400, concentration: 0.85, description: "Extensive titanium deposits in ilmenite-bearing basalts, economically viable for oxygen extraction" },
+  { name: "Mare Serenitatis Ti", type: "titanium", subtype: "Moderate-Ti (6-8%)", lat: 28.0, lon: 17.5, radius: 250, concentration: 0.75, description: "Moderate titanium content in younger basalt flows with 6-8% TiO₂" },
+  { name: "Mare Moscoviense Ti", type: "titanium", subtype: "Farside Ti Basalt", lat: 27.3, lon: 147.9, radius: 140, concentration: 0.70, description: "Rare farside titanium deposit in isolated mare basalt unit" },
   
-  // Titanium deposits
-  { name: "Mare Tranquillitatis Ti", type: "titanium", lat: 8.5, lon: 31.4, radius: 300, concentration: 0.90 },
-  { name: "Oceanus Procellarum Ti", type: "titanium", lat: 23.0, lon: -51.0, radius: 400, concentration: 0.85 },
-  { name: "Mare Serenitatis Ti", type: "titanium", lat: 28.0, lon: 17.5, radius: 250, concentration: 0.75 },
-  { name: "Mare Moscoviense Ti", type: "titanium", lat: 27.3, lon: 147.9, radius: 140, concentration: 0.70 },
+  // KREEP deposits (K-Potassium, REE-Rare Earth Elements, P-Phosphorus)
+  { name: "Oceanus Procellarum KREEP", type: "kreep", subtype: "K, REE, P, Th, U", lat: 26.0, lon: -15.0, radius: 500, concentration: 0.88, description: "Procellarum KREEP Terrane with high potassium, thorium, uranium, and rare earth elements from late-stage magma differentiation" },
+  { name: "Mare Imbrium KREEP", type: "kreep", subtype: "Thorium Anomaly", lat: 38.0, lon: -17.0, radius: 400, concentration: 0.82, description: "Imbrium impact ejecta enriched in KREEP materials excavated from lunar mantle" },
+  { name: "Aristarchus Plateau KREEP", type: "kreep", subtype: "Volcanic KREEP", lat: 26.0, lon: -47.0, radius: 150, concentration: 0.75, description: "Volcanic plateau with KREEP-rich basalts indicating evolved magma composition" },
   
-  // KREEP deposits
-  { name: "Oceanus Procellarum KREEP", type: "kreep", lat: 26.0, lon: -15.0, radius: 500, concentration: 0.88 },
-  { name: "Mare Imbrium KREEP", type: "kreep", lat: 38.0, lon: -17.0, radius: 400, concentration: 0.82 },
-  { name: "Aristarchus Plateau KREEP", type: "kreep", lat: 26.0, lon: -47.0, radius: 150, concentration: 0.75 },
-  
-  // Mineral deposits (detailed by type)
-  { name: "Aristarchus Pyroclastics", type: "minerals", subtype: "Volcanic Glass", lat: 26.8, lon: -50.8, radius: 40, concentration: 0.85, description: "Dark mantle deposits rich in volcanic glass beads and titanium" },
-  { name: "Reiner Gamma Swirl", type: "minerals", subtype: "Magnetic Anomaly", lat: 7.5, lon: -59.0, radius: 70, concentration: 0.70, description: "High-albedo swirl associated with crustal magnetic field" },
-  { name: "South Pole-Aitken Basin", type: "minerals", subtype: "Impact Melt", lat: -50.0, lon: -165.0, radius: 1200, concentration: 0.65, description: "Ancient impact basin exposing lunar mantle materials with olivine and pyroxene" },
-  { name: "Tycho Central Peak", type: "minerals", subtype: "Anorthosite", lat: -43.31, lon: -11.36, radius: 120, concentration: 0.72, description: "Central peak with exposed anorthositic highland crust" },
-  { name: "Copernicus Ejecta", type: "minerals", subtype: "Fresh Regolith", lat: 9.62, lon: -20.08, radius: 130, concentration: 0.68, description: "Bright ray system with freshly exposed minerals from deep excavation" },
-  { name: "Mare Moscoviense", type: "minerals", subtype: "Rare Farside Mare", lat: 27.3, lon: 147.9, radius: 180, concentration: 0.80, description: "One of few maria on the far side with basaltic composition" },
-  { name: "Orientale Basin Ring", type: "minerals", subtype: "Multi-ring Impact", lat: -19.4, lon: -92.8, radius: 300, concentration: 0.75, description: "Well-preserved multi-ring impact structure with mixed crustal materials" },
-  { name: "Compton-Belkovich Thorium", type: "minerals", subtype: "Silicic Volcanism", lat: 61.1, lon: 99.5, radius: 50, concentration: 0.78, description: "Rare non-basaltic volcanic complex enriched in thorium and uranium" }
+  // Mineral deposits (detailed by composition)
+  { name: "Aristarchus Pyroclastics", type: "minerals", subtype: "TiO₂, Glass Beads", lat: 26.8, lon: -50.8, radius: 40, concentration: 0.85, description: "Dark mantle deposits rich in volcanic glass beads with 8-10% titanium oxide and orange glass spherules" },
+  { name: "Reiner Gamma Swirl", type: "minerals", subtype: "High-Albedo Regolith", lat: 7.5, lon: -59.0, radius: 70, concentration: 0.70, description: "Magnetic anomaly with high-albedo feldspar-rich regolith, possibly sorted by solar wind deflection" },
+  { name: "South Pole-Aitken Basin", type: "minerals", subtype: "Olivine, Pyroxene", lat: -50.0, lon: -165.0, radius: 1200, concentration: 0.65, description: "Ancient impact basin (4.3 Gya) exposing lunar mantle with mafic minerals: olivine (Mg,Fe)₂SiO₄ and low-calcium pyroxene" },
+  { name: "Tycho Central Peak", type: "minerals", subtype: "Anorthosite (CaAl₂Si₂O₈)", lat: -43.31, lon: -11.36, radius: 120, concentration: 0.72, description: "Central peak uplift exposing pristine anorthositic highland crust composed of plagioclase feldspar" },
+  { name: "Copernicus Ejecta", type: "minerals", subtype: "Mixed Regolith", lat: 9.62, lon: -20.08, radius: 130, concentration: 0.68, description: "Bright ray system with freshly excavated minerals from 800m depth: olivine, pyroxene, and iron-bearing glass" },
+  { name: "Mare Moscoviense", type: "minerals", subtype: "High-Ti Basalt", lat: 27.3, lon: 147.9, radius: 180, concentration: 0.80, description: "Rare farside mare with titanium-rich basalts (6-8% TiO₂) and clinopyroxene from 3.2 Gya volcanism" },
+  { name: "Orientale Basin Ring", type: "minerals", subtype: "Impact Breccia", lat: -19.4, lon: -92.8, radius: 300, concentration: 0.75, description: "Multi-ring impact structure (3.8 Gya) with mixed crustal fragments: noritic anorthosite and melt breccia" },
+  { name: "Compton-Belkovich Thorium", type: "minerals", subtype: "Th, U, Granite", lat: 61.1, lon: 99.5, radius: 50, concentration: 0.78, description: "Rare silicic volcanic complex with granite composition enriched in incompatible elements: thorium (20+ ppm) and uranium" }
 ];
 
 // Status colors
