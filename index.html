@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Moon Artifact Explorer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="container"></div>
+  
+  <!-- HUD Overlay -->
+  <div id="hud">
+    <div id="title">
+      <h1>Moon Artifact Explorer</h1>
+      <p class="subtitle">Drag to orbit • Scroll to zoom • Hover for details</p>
+    </div>
+    
+    <div id="legend">
+      <h3>ARTIFACT STATUS</h3>
+      <div class="legend-item"><span class="dot impactor"></span> Impactor</div>
+      <div class="legend-item"><span class="dot crashed"></span> Crashed</div>
+      <div class="legend-item"><span class="dot landed"></span> Landed</div>
+      <div class="legend-item"><span class="dot orbiting"></span> Orbiting</div>
+      
+      <h3>VIEW TOGGLES</h3>
+      <label><input type="checkbox" id="toggleGrid" checked> Grid (G)</label>
+      <label><input type="checkbox" id="toggleLabels" checked> Labels (L)</label>
+      <label><input type="checkbox" id="toggleTerrain" checked> Terrain (T)</label>
+      <label><input type="checkbox" id="togglePoles" checked> Poles (P)</label>
+      
+      <h3>TERRAIN MODE (V)</h3>
+      <div id="terrainMode">Hybrid</div>
+      
+      <h3>RESOURCES</h3>
+      <label class="resource water"><input type="checkbox" id="toggleWater"> Water Ice (W)</label>
+      <label class="resource helium"><input type="checkbox" id="toggleHelium"> Helium-3 (I)</label>
+      <label class="resource titanium"><input type="checkbox" id="toggleTitanium"> Titanium (N)</label>
+      <label class="resource kreep"><input type="checkbox" id="toggleKreep"> KREEP (K)</label>
+      <label class="resource minerals"><input type="checkbox" id="toggleMinerals"> Minerals (X)</label>
+      <div class="small-text">[A] Toggle All • [+/-] Opacity</div>
+      
+      <h3>NAVIGATION</h3>
+      <div class="small-text">[R] Reset • [S] Surveyor 3 • [D] Help</div>
+    </div>
+    
+    <div id="search-panel">
+      <input type="text" id="searchBox" placeholder="Search artifacts... (/)">
+      <div id="filters">
+        <h4>FILTER BY ORIGIN</h4>
+        <label><input type="checkbox" id="filterSoviet" checked> Soviet/Russia</label>
+        <label><input type="checkbox" id="filterUS" checked> United States</label>
+        <label><input type="checkbox" id="filterOther" checked> Other Nations</label>
+      </div>
+      <div id="artifactCount">Showing 0 of 0 artifacts</div>
+    </div>
+  </div>
+  
+  <!-- Tooltip -->
+  <div id="tooltip"></div>
+  
+  <!-- Help Modal -->
+  <div id="helpModal" class="hidden">
+    <div class="modal-content">
+      <h2>KEYBOARD SHORTCUTS</h2>
+      <div class="shortcuts-grid">
+        <div class="shortcut-col">
+          <h4>VIEW</h4>
+          <div>G - Grid</div>
+          <div>L - Labels</div>
+          <div>T - Terrain</div>
+          <div>P - Poles</div>
+          <div>V - Terrain Mode</div>
+          <div>E - Elevation Colors</div>
+        </div>
+        <div class="shortcut-col">
+          <h4>RESOURCES</h4>
+          <div>W - Water Ice</div>
+          <div>I - Helium-3</div>
+          <div>N - Titanium</div>
+          <div>K - KREEP</div>
+          <div>X - Minerals</div>
+          <div>A - Toggle All</div>
+        </div>
+        <div class="shortcut-col">
+          <h4>NAVIGATION</h4>
+          <div>R - Reset View</div>
+          <div>S - Surveyor 3</div>
+          <div>/ - Search</div>
+          <div>1-9 - Quick Focus</div>
+          <div>D - This Help</div>
+        </div>
+      </div>
+      <p class="modal-close">Press D to close</p>
+    </div>
+  </div>
+  
+  <!-- Loading -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Initializing Lunar Database...</p>
+  </div>
+
+  <!-- Three.js and modules -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
