@@ -568,6 +568,7 @@ function onMouseMove(event) {
       <div class="detail">Type: ${artifact.type} | Status: ${artifact.status}</div>
       <div class="coords">${artifact.lat.toFixed(2)}° lat, ${artifact.lon.toFixed(2)}° lon</div>
       <div class="detail">Elevation: ${elevKm > 0 ? '+' : ''}${elevKm} km</div>
+      ${artifact.description ? `<div class="description">${artifact.description}</div>` : ''}
     `;
     
     tooltip.style.display = 'block';

@@ -219,6 +219,16 @@ canvas {
   margin-top: 6px;
 }
 
+#tooltip .description {
+  color: #88ccff;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid #333;
+  font-style: italic;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
 /* Help Modal */
 #helpModal {
   position: fixed;

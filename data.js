@@ -2,9 +2,9 @@
 
 export const ARTIFACTS = [
   // 1959-1969 Early missions
-  { name: "Luna 2", lat: 29.1, lon: 0.0, operator: "Soviet Union", year: 1959, type: "Impactor", status: "Impactor" },
-  { name: "Luna 2 Third Stage", lat: 30.0, lon: 1.0, operator: "Soviet Union", year: 1959, type: "Rocket Stage", status: "Crashed" },
-  { name: "Ranger 4", lat: -15.5, lon: -130.7, operator: "United States", year: 1962, type: "Impactor", status: "Crashed" },
+  { name: "Luna 2", lat: 29.1, lon: 0.0, operator: "Soviet Union", year: 1959, type: "Impactor", status: "Impactor", description: "First spacecraft to reach the Moon's surface" },
+  { name: "Luna 2 Third Stage", lat: 30.0, lon: 1.0, operator: "Soviet Union", year: 1959, type: "Rocket Stage", status: "Crashed", description: "Rocket stage from Luna 2 mission" },
+  { name: "Ranger 4", lat: -15.5, lon: -130.7, operator: "United States", year: 1962, type: "Impactor", status: "Crashed", description: "First US spacecraft to reach the Moon, failed electronically" },
   { name: "Ranger 6", lat: 9.358, lon: 21.480, operator: "United States", year: 1964, type: "Impactor", status: "Impactor" },
   { name: "Ranger 7", lat: -10.63, lon: -20.60, operator: "United States", year: 1964, type: "Impactor", status: "Impactor" },
   { name: "Luna 5", lat: -8.0, lon: -23.0, operator: "Soviet Union", year: 1965, type: "Probe", status: "Crashed" },
@@ -12,16 +12,16 @@ export const ARTIFACTS = [
   { name: "Luna 8", lat: 9.1, lon: 63.3, operator: "Soviet Union", year: 1965, type: "Probe", status: "Crashed" },
   { name: "Ranger 8", lat: 2.638, lon: 24.787, operator: "United States", year: 1965, type: "Impactor", status: "Impactor" },
   { name: "Ranger 9", lat: -12.828, lon: -2.387, operator: "United States", year: 1965, type: "Impactor", status: "Impactor" },
-  { name: "Luna 9", lat: 7.08, lon: -64.37, operator: "Soviet Union", year: 1966, type: "Lander", status: "Landed" },
-  { name: "Surveyor 1", lat: -2.474, lon: -43.339, operator: "United States", year: 1966, type: "Lander", status: "Landed" },
+  { name: "Luna 9", lat: 7.08, lon: -64.37, operator: "Soviet Union", year: 1966, type: "Lander", status: "Landed", description: "First controlled soft landing on the Moon" },
+  { name: "Surveyor 1", lat: -2.474, lon: -43.339, operator: "United States", year: 1966, type: "Lander", status: "Landed", description: "First US soft landing, transmitted 11,237 photos" },
   { name: "Luna 13", lat: 18.87, lon: -62.05, operator: "Soviet Union", year: 1966, type: "Lander", status: "Landed" },
   { name: "Surveyor 3", lat: -3.015, lon: -23.418, operator: "United States", year: 1967, type: "Lander", status: "Landed" },
   { name: "Surveyor 5", lat: 1.461, lon: 23.195, operator: "United States", year: 1967, type: "Lander", status: "Landed" },
   { name: "Surveyor 6", lat: 0.49, lon: -1.40, operator: "United States", year: 1967, type: "Lander", status: "Landed" },
   { name: "Surveyor 7", lat: -40.86, lon: -11.47, operator: "United States", year: 1968, type: "Lander", status: "Landed" },
-  { name: "Apollo 11 Eagle", lat: 0.6741, lon: 23.4730, operator: "United States", year: 1969, type: "Lander", status: "Landed" },
-  { name: "Apollo 11 Flag", lat: 0.6734, lon: 23.4731, operator: "United States", year: 1969, type: "Equipment", status: "Landed" },
-  { name: "Apollo 12 Intrepid", lat: -3.0124, lon: -23.4216, operator: "United States", year: 1969, type: "Lander", status: "Landed" },
+  { name: "Apollo 11 Eagle", lat: 0.6741, lon: 23.4730, operator: "United States", year: 1969, type: "Lander", status: "Landed", description: "First crewed lunar landing - Armstrong and Aldrin" },
+  { name: "Apollo 11 Flag", lat: 0.6734, lon: 23.4731, operator: "United States", year: 1969, type: "Equipment", status: "Landed", description: "US flag planted during first Moon walk" },
+  { name: "Apollo 12 Intrepid", lat: -3.0124, lon: -23.4216, operator: "United States", year: 1969, type: "Lander", status: "Landed", description: "Landed near Surveyor 3, crew visited the probe" },
   
   // 1970s missions
   { name: "Luna 16", lat: -0.5137, lon: 56.3638, operator: "Soviet Union", year: 1970, type: "Sample Return", status: "Landed" },
@@ -33,6 +33,7 @@ export const ARTIFACTS = [
   { name: "Apollo 16 Orion", lat: -8.9999, lon: 15.5001, operator: "United States", year: 1972, type: "Lander", status: "Landed" },
   { name: "Apollo 17 Challenger", lat: 20.1908, lon: 30.7717, operator: "United States", year: 1972, type: "Lander", status: "Landed" },
   { name: "Luna 21/Lunokhod 2", lat: 25.85, lon: 30.45, operator: "Soviet Union", year: 1973, type: "Rover", status: "Landed" },
+  { name: "Luna 23", lat: 13.0, lon: 62.0, operator: "Soviet Union", year: 1974, type: "Sample Return", status: "Landed", description: "Landed in Mare Crisium but drilling device was damaged" },
   { name: "Luna 24", lat: 12.7145, lon: 62.2129, operator: "Soviet Union", year: 1976, type: "Sample Return", status: "Landed" },
   
   // 1990s-2000s
@@ -51,19 +52,21 @@ export const ARTIFACTS = [
   { name: "Chang'e 3/Yutu", lat: 44.1214, lon: -19.5116, operator: "China", year: 2013, type: "Lander/Rover", status: "Landed" },
   { name: "LADEE", lat: 11.85, lon: -27.79, operator: "United States", year: 2014, type: "Orbiter", status: "Crashed" },
   { name: "Chang'e 4/Yutu-2", lat: -45.4446, lon: 177.5991, operator: "China", year: 2019, type: "Lander/Rover", status: "Landed" },
-  { name: "Beresheet", lat: 32.5956, lon: 19.3496, operator: "Israel", year: 2019, type: "Lander", status: "Crashed" },
-  { name: "Chandrayaan-2 Vikram", lat: -70.9, lon: 22.8, operator: "India", year: 2019, type: "Lander", status: "Crashed" },
-  { name: "Chang'e 5", lat: 43.0576, lon: -51.9163, operator: "China", year: 2020, type: "Sample Return", status: "Landed" },
-  { name: "Chandrayaan-3 Vikram", lat: -69.373, lon: 32.319, operator: "India", year: 2023, type: "Lander", status: "Landed" },
-  { name: "Chandrayaan-3 Pragyan", lat: -69.373, lon: 32.320, operator: "India", year: 2023, type: "Rover", status: "Landed" },
-  { name: "Luna 25", lat: -57.86, lon: 68.77, operator: "Russia", year: 2023, type: "Lander", status: "Crashed" },
-  { name: "SLIM", lat: -13.3, lon: 25.2, operator: "Japan", year: 2024, type: "Lander", status: "Landed" },
-  { name: "Odysseus (IM-1)", lat: -80.13, lon: -1.44, operator: "United States", year: 2024, type: "Lander", status: "Landed" },
-  
+  { name: "Beresheet", lat: 32.5956, lon: 19.3496, operator: "Israel", year: 2019, type: "Lander", status: "Crashed", description: "First privately funded lunar lander attempt" },
+  { name: "Chandrayaan-2 Vikram", lat: -70.9, lon: 22.8, operator: "India", year: 2019, type: "Lander", status: "Crashed", description: "Lost communication during descent near south pole" },
+  { name: "Chang'e 5", lat: 43.0576, lon: -51.9163, operator: "China", year: 2020, type: "Sample Return", status: "Landed", description: "Returned 1.731 kg of lunar samples" },
+  { name: "Hakuto-R Mission 1", lat: 47.5, lon: 43.8, operator: "Japan", year: 2023, type: "Lander", status: "Crashed", description: "ispace private lander crashed in Atlas crater" },
+  { name: "Chandrayaan-3 Vikram", lat: -69.373, lon: 32.319, operator: "India", year: 2023, type: "Lander", status: "Landed", description: "India's successful south pole landing" },
+  { name: "Chandrayaan-3 Pragyan", lat: -69.373, lon: 32.320, operator: "India", year: 2023, type: "Rover", status: "Landed", description: "Rover deployed from Chandrayaan-3" },
+  { name: "Luna 25", lat: -57.86, lon: 68.77, operator: "Russia", year: 2023, type: "Lander", status: "Crashed", description: "Russia's first lunar mission since 1976, crashed during descent" },
+  { name: "SLIM", lat: -13.3, lon: 25.2, operator: "Japan", year: 2024, type: "Lander", status: "Landed", description: "Smart Lander for Investigating Moon, landed upside-down but functional" },
+  { name: "Odysseus (IM-1)", lat: -80.13, lon: -1.44, operator: "United States", year: 2024, type: "Lander", status: "Landed", description: "First US soft landing since Apollo 17 (Intuitive Machines)" },
+  { name: "Chang'e 6", lat: -41.6385, lon: -153.9852, operator: "China", year: 2024, type: "Sample Return", status: "Landed", description: "First sample return from far side of the Moon" },
+
   // 2025 additions
-  { name: "Blue Ghost", lat: 18.57, lon: 61.82, operator: "United States", year: 2025, type: "Lander", status: "Landed" },
-  { name: "Hakuto-R M2", lat: 55.0, lon: 1.4, operator: "Japan", year: 2025, type: "Lander", status: "Crashed" },
-  { name: "IM-2 Athena", lat: -84.79, lon: 29.30, operator: "United States", year: 2025, type: "Lander", status: "Landed" }
+  { name: "Blue Ghost Mission 1", lat: 18.57, lon: 61.82, operator: "United States", year: 2025, type: "Lander", status: "Landed", description: "Firefly Aerospace's first successful commercial lunar landing" },
+  { name: "Hakuto-R M2", lat: 55.0, lon: 1.4, operator: "Japan", year: 2025, type: "Lander", status: "Crashed", description: "ispace second attempt, flipped over one minute before landing" },
+  { name: "IM-2 Athena", lat: -84.79, lon: 29.30, operator: "United States", year: 2025, type: "Lander", status: "Landed", description: "Intuitive Machines second mission, landed on its side" }
 ];
 
 export const CRATERS = [
