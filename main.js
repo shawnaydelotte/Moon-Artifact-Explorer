@@ -941,16 +941,24 @@ function showTrajectory(artifact) {
     }
   } else if (isOrbiter) {
     // For orbiters that landed/crashed: show arrival from Earth, orbit, then descent
-    const orbitSegments = 40;
-    const approachSegments = 30;
-    const descentSegments = 30;
+    const orbitSegments = 35;
+    const approachSegments = 25;
+    const descentSegments = 40;
 
-    // Part 1: Approach from Earth to orbit insertion point
+    // Calculate the landing site's angular position
+    const landingPhi = (90 - artifact.lat) * (Math.PI / 180);
+    const landingTheta = (artifact.lon + 180) * (Math.PI / 180);
+
+    // Part 1: Approach from Earth to orbit insertion point (opposite side of landing)
+    // Insert into orbit on the opposite side of the Moon from landing site
+    const insertionAngle = landingTheta + Math.PI; // Opposite side
+    const orbitRadius = MOON_RADIUS + 80;
     const orbitInsertionPoint = new THREE.Vector3(
-      0,
-      MOON_RADIUS + 80,
-      0
+      -Math.sin(landingPhi) * Math.cos(insertionAngle) * orbitRadius,
+      Math.cos(landingPhi) * orbitRadius,
+      Math.sin(landingPhi) * Math.sin(insertionAngle) * orbitRadius
     );
+
     const approachControlHeight = MOON_RADIUS * 2;
     const approachControl = new THREE.Vector3(
       (earthPosition.x + orbitInsertionPoint.x) / 2,
@@ -972,26 +980,71 @@ function showTrajectory(artifact) {
       curvePoints.push(new THREE.Vector3(x, y, z));
     }
 
-    // Part 2: Orbital phase (partial orbit)
-    const orbitRadius = MOON_RADIUS + 80;
+    // Part 2: Orbital phase - orbit from insertion point towards landing site
+    // Calculate starting angle and ending angle
+    const startAngle = Math.atan2(orbitInsertionPoint.z, orbitInsertionPoint.x);
+    const endAngle = landingTheta - Math.PI / 2; // End 90 degrees before landing site for descent
+    let angleSpan = endAngle - startAngle;
+
+    // Normalize angle span to be positive and less than 2π
+    while (angleSpan < 0) angleSpan += Math.PI * 2;
+    while (angleSpan > Math.PI * 2) angleSpan -= Math.PI * 2;
+
+    // Use the shorter arc if it's more than π
+    if (angleSpan > Math.PI) {
+      angleSpan = angleSpan - Math.PI * 2;
+    }
+
     for (let i = 0; i <= orbitSegments; i++) {
-      const angle = (i / orbitSegments) * Math.PI * 1.5; // 270 degrees
-      const x = Math.cos(angle) * orbitRadius;
-      const y = Math.sin(angle) * orbitRadius * 0.7;
-      const z = Math.sin(angle * 2) * 20;
+      const t = i / orbitSegments;
+      const angle = startAngle + angleSpan * t;
+
+      // Calculate position in orbit at this angle
+      const orbitPhi = landingPhi + (Math.PI / 2 - landingPhi) * (1 - t); // Gradually match landing latitude
+      const x = -Math.sin(orbitPhi) * Math.cos(angle) * orbitRadius;
+      const y = Math.cos(orbitPhi) * orbitRadius;
+      const z = Math.sin(orbitPhi) * Math.sin(angle) * orbitRadius;
+
       curvePoints.push(new THREE.Vector3(x, y, z));
     }
 
-    // Part 3: Descent to landing/crash site
+    // Part 3: Descent from orbit to landing/crash site
     const lastOrbitPoint = curvePoints[curvePoints.length - 1];
+
+    // Create a controlled descent that stays above surface
+    // Use a parabolic arc that goes out and then comes back down
     for (let i = 1; i <= descentSegments; i++) {
       const t = i / descentSegments;
-      const eased = t * t; // Ease in for faster descent
-      curvePoints.push(new THREE.Vector3(
-        lastOrbitPoint.x + (landingPos.x - lastOrbitPoint.x) * eased,
-        lastOrbitPoint.y + (landingPos.y - lastOrbitPoint.y) * eased,
-        lastOrbitPoint.z + (landingPos.z - lastOrbitPoint.z) * eased
-      ));
+
+      // Linear interpolation for base position
+      const baseX = lastOrbitPoint.x + (landingPos.x - lastOrbitPoint.x) * t;
+      const baseY = lastOrbitPoint.y + (landingPos.y - lastOrbitPoint.y) * t;
+      const baseZ = lastOrbitPoint.z + (landingPos.z - lastOrbitPoint.z) * t;
+
+      // Add outward bulge to prevent surface intersection (parabolic)
+      // Maximum bulge at t=0.5, zero at t=0 and t=1
+      const bulgeFactor = 4 * t * (1 - t); // Peaks at 0.5
+      const bulgeAmount = 30; // Additional altitude during descent
+
+      const descentPoint = new THREE.Vector3(baseX, baseY, baseZ);
+      const direction = descentPoint.clone().normalize();
+      descentPoint.add(direction.multiplyScalar(bulgeFactor * bulgeAmount));
+
+      // Final safety check: ensure we're above surface
+      const distanceFromCenter = descentPoint.length();
+      const surfaceElev = window.elevationData ?
+        getElevationAt(
+          Math.asin(descentPoint.y / distanceFromCenter) * (180 / Math.PI),
+          Math.atan2(descentPoint.x, descentPoint.z) * (180 / Math.PI),
+          window.elevationData
+        ) * 2 : 0;
+      const minRadius = MOON_RADIUS + surfaceElev + 3;
+
+      if (distanceFromCenter < minRadius) {
+        descentPoint.normalize().multiplyScalar(minRadius);
+      }
+
+      curvePoints.push(descentPoint);
     }
   } else {
     // For direct landing/impact missions, show arc from Earth to Moon
