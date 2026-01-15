@@ -231,6 +231,159 @@ canvas {
   line-height: 1.4;
 }
 
+/* Mission Details Panel */
+#missionPanel {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 380px;
+  max-height: 70vh;
+  background: rgba(0, 0, 0, 0.95);
+  border: 2px solid #00ff66;
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 150;
+  box-shadow: 0 8px 32px rgba(0, 255, 102, 0.3);
+  transition: all 0.3s ease;
+}
+
+#missionPanel.hidden {
+  display: none;
+}
+
+.panel-header {
+  background: linear-gradient(135deg, #00ff66 0%, #00cc52 100%);
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-header h2 {
+  font-size: 16px;
+  font-weight: bold;
+  color: #000;
+  margin: 0;
+  flex: 1;
+}
+
+#panelClose {
+  background: rgba(0, 0, 0, 0.3);
+  border: none;
+  color: #000;
+  font-size: 24px;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+#panelClose:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.panel-content {
+  padding: 20px;
+  overflow-y: auto;
+  max-height: calc(70vh - 64px);
+}
+
+.mission-badge {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.operator-badge, .year-badge {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.operator-badge {
+  background: rgba(0, 255, 102, 0.2);
+  color: #00ff66;
+  border: 1px solid #00ff66;
+}
+
+.year-badge {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid #666;
+}
+
+.mission-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 13px;
+  color: #fff;
+  font-weight: bold;
+}
+
+.mission-description {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 3px solid #00ff66;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #ccc;
+  margin-bottom: 16px;
+  font-style: italic;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 10px;
+  background: rgba(0, 255, 102, 0.1);
+  border: 1px solid #00ff66;
+  border-radius: 4px;
+  color: #00ff66;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.action-btn:hover {
+  background: rgba(0, 255, 102, 0.2);
+  transform: translateY(-1px);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+}
+
 /* Help Modal */
 #helpModal {
   position: fixed;

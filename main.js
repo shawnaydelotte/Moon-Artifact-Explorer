@@ -26,9 +26,9 @@ const state = {
   showMinerals: false,
   resourceOpacity: 0.7,
   
+  filterUS: true,
   filterSovietUnion: true,
   filterRussia: true,
-  filterUS: true,
   filterChina: true,
   filterIndia: true,
   filterJapan: true,
@@ -50,6 +50,8 @@ let resourceMeshes = [];
 let northPole, southPole;
 let raycaster, mouse;
 let hoveredArtifact = null;
+let trajectoryGroup = null;
+let earthMarker = null;
 
 function init() {
   // Validate dependencies
@@ -122,6 +124,7 @@ function init() {
   // Event listeners
   window.addEventListener('resize', onWindowResize);
   window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('click', onMouseClick);
   window.addEventListener('keydown', onKeyDown);
   
   // UI bindings
@@ -816,6 +819,309 @@ function onMouseMove(event) {
   }
 }
 
+function onMouseClick(event) {
+  // Skip if clicking on UI elements
+  if (event.target.closest('#hud') || event.target.closest('#missionPanel')) {
+    return;
+  }
+
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+
+  const markers = artifactMarkers.filter(m => m.marker.visible).map(m => m.marker);
+  const intersects = raycaster.intersectObjects(markers);
+
+  if (intersects.length > 0) {
+    const artifact = intersects[0].object.userData;
+    openMissionPanel(artifact);
+  }
+}
+
+function openMissionPanel(artifact) {
+  const panel = document.getElementById('missionPanel');
+  const elev = window.elevationData ? getElevationAt(artifact.lat, artifact.lon, window.elevationData) : 0;
+  const elevKm = (elev / (MOON_RADIUS / MOON_RADIUS_KM)).toFixed(1);
+
+  // Populate panel
+  document.getElementById('panelTitle').textContent = artifact.name;
+  document.getElementById('panelOperator').textContent = artifact.operator;
+  document.getElementById('panelYear').textContent = artifact.year;
+  document.getElementById('panelType').textContent = artifact.type;
+  document.getElementById('panelStatus').textContent = artifact.status;
+  document.getElementById('panelCoords').textContent = `${artifact.lat.toFixed(3)}° ${artifact.lat >= 0 ? 'N' : 'S'}, ${Math.abs(artifact.lon).toFixed(3)}° ${artifact.lon >= 0 ? 'E' : 'W'}`;
+  document.getElementById('panelElevation').textContent = `${elevKm > 0 ? '+' : ''}${elevKm} km`;
+
+  const description = artifact.description || 'No additional information available for this mission.';
+  document.getElementById('panelDescription').textContent = description;
+
+  // Show panel
+  panel.classList.remove('hidden');
+
+  // Store current artifact for button actions
+  panel.dataset.artifactName = artifact.name;
+}
+
+function closeMissionPanel() {
+  document.getElementById('missionPanel').classList.add('hidden');
+  clearTrajectory();
+}
+
+// ============================================================
+// TRAJECTORY VISUALIZATION
+// ============================================================
+function showTrajectory(artifact) {
+  // Clear any existing trajectory
+  clearTrajectory();
+
+  // Create trajectory group
+  trajectoryGroup = new THREE.Group();
+  scene.add(trajectoryGroup);
+
+  // Earth reference point (positioned far from moon to show origin)
+  const earthDistance = MOON_RADIUS * 3;
+  const earthPosition = new THREE.Vector3(earthDistance, 0, 0);
+
+  // Create Earth marker (small blue sphere)
+  const earthGeometry = new THREE.SphereGeometry(15, 16, 16);
+  const earthMaterial = new THREE.MeshStandardMaterial({
+    color: 0x4488ff,
+    emissive: 0x2266ff,
+    emissiveIntensity: 0.5,
+    roughness: 0.7,
+    metalness: 0.2
+  });
+  earthMarker = new THREE.Mesh(earthGeometry, earthMaterial);
+  earthMarker.position.copy(earthPosition);
+  trajectoryGroup.add(earthMarker);
+
+  // Add Earth label
+  const earthLabel = createTextSprite('EARTH');
+  earthLabel.position.set(earthPosition.x, earthPosition.y + 25, earthPosition.z);
+  trajectoryGroup.add(earthLabel);
+
+  // Calculate landing position
+  const elev = window.elevationData ? getElevationAt(artifact.lat, artifact.lon, window.elevationData) : 0;
+  const landingPos = latLonToVector3(artifact.lat, artifact.lon, MOON_RADIUS + elev * 2);
+
+  // Determine trajectory style based on mission type and status
+  const status = artifact.status.toLowerCase();
+  const type = artifact.type.toLowerCase();
+  const isOrbiter = type.includes('orbit');
+  const isCurrentlyOrbiting = status === 'orbiting';
+
+  // Arc color based on mission status
+  let arcColor;
+  if (status === 'landed') {
+    arcColor = 0x66ff66;
+  } else if (status === 'crashed') {
+    arcColor = 0xffee55;
+  } else if (status === 'impactor') {
+    arcColor = 0xff3366;
+  } else if (status === 'orbiting') {
+    arcColor = 0x00ffff;
+  } else {
+    arcColor = 0xffffff;
+  }
+
+  // Create curved trajectory path
+  const curvePoints = [];
+  const segments = 100;
+
+  if (isCurrentlyOrbiting) {
+    // For currently orbiting missions, show elliptical orbit only
+    for (let i = 0; i <= segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      const orbitRadius = MOON_RADIUS + 80;
+      const x = Math.cos(angle) * orbitRadius;
+      const y = Math.sin(angle) * orbitRadius * 0.7; // Slight ellipse
+      const z = Math.sin(angle * 2) * 20; // Add some 3D variation
+      curvePoints.push(new THREE.Vector3(x, y, z));
+    }
+  } else if (isOrbiter) {
+    // For orbiters that landed/crashed: show arrival from Earth, orbit, then descent
+    const orbitSegments = 40;
+    const approachSegments = 30;
+    const descentSegments = 30;
+
+    // Part 1: Approach from Earth to orbit insertion point
+    const orbitInsertionPoint = new THREE.Vector3(
+      0,
+      MOON_RADIUS + 80,
+      0
+    );
+    const approachControlHeight = MOON_RADIUS * 2;
+    const approachControl = new THREE.Vector3(
+      (earthPosition.x + orbitInsertionPoint.x) / 2,
+      approachControlHeight,
+      (earthPosition.z + orbitInsertionPoint.z) / 2
+    );
+
+    for (let i = 0; i <= approachSegments; i++) {
+      const t = i / approachSegments;
+      const x = Math.pow(1 - t, 2) * earthPosition.x +
+                2 * (1 - t) * t * approachControl.x +
+                Math.pow(t, 2) * orbitInsertionPoint.x;
+      const y = Math.pow(1 - t, 2) * earthPosition.y +
+                2 * (1 - t) * t * approachControl.y +
+                Math.pow(t, 2) * orbitInsertionPoint.y;
+      const z = Math.pow(1 - t, 2) * earthPosition.z +
+                2 * (1 - t) * t * approachControl.z +
+                Math.pow(t, 2) * orbitInsertionPoint.z;
+      curvePoints.push(new THREE.Vector3(x, y, z));
+    }
+
+    // Part 2: Orbital phase (partial orbit)
+    const orbitRadius = MOON_RADIUS + 80;
+    for (let i = 0; i <= orbitSegments; i++) {
+      const angle = (i / orbitSegments) * Math.PI * 1.5; // 270 degrees
+      const x = Math.cos(angle) * orbitRadius;
+      const y = Math.sin(angle) * orbitRadius * 0.7;
+      const z = Math.sin(angle * 2) * 20;
+      curvePoints.push(new THREE.Vector3(x, y, z));
+    }
+
+    // Part 3: Descent to landing/crash site
+    const lastOrbitPoint = curvePoints[curvePoints.length - 1];
+    for (let i = 1; i <= descentSegments; i++) {
+      const t = i / descentSegments;
+      const eased = t * t; // Ease in for faster descent
+      curvePoints.push(new THREE.Vector3(
+        lastOrbitPoint.x + (landingPos.x - lastOrbitPoint.x) * eased,
+        lastOrbitPoint.y + (landingPos.y - lastOrbitPoint.y) * eased,
+        lastOrbitPoint.z + (landingPos.z - lastOrbitPoint.z) * eased
+      ));
+    }
+  } else {
+    // For direct landing/impact missions, show arc from Earth to Moon
+    const controlHeight = MOON_RADIUS * 2; // Height of arc
+    const controlPoint = new THREE.Vector3(
+      (earthPosition.x + landingPos.x) / 2,
+      controlHeight,
+      (earthPosition.z + landingPos.z) / 2
+    );
+
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      // Quadratic Bézier curve formula
+      const x = Math.pow(1 - t, 2) * earthPosition.x +
+                2 * (1 - t) * t * controlPoint.x +
+                Math.pow(t, 2) * landingPos.x;
+      const y = Math.pow(1 - t, 2) * earthPosition.y +
+                2 * (1 - t) * t * controlPoint.y +
+                Math.pow(t, 2) * landingPos.y;
+      const z = Math.pow(1 - t, 2) * earthPosition.z +
+                2 * (1 - t) * t * controlPoint.z +
+                Math.pow(t, 2) * landingPos.z;
+      curvePoints.push(new THREE.Vector3(x, y, z));
+    }
+  }
+
+  // Create trajectory line
+  const trajectoryGeometry = new THREE.BufferGeometry().setFromPoints(curvePoints);
+  const trajectoryMaterial = new THREE.LineBasicMaterial({
+    color: arcColor,
+    transparent: true,
+    opacity: 0.8,
+    linewidth: 2
+  });
+  const trajectoryLine = new THREE.Line(trajectoryGeometry, trajectoryMaterial);
+  trajectoryGroup.add(trajectoryLine);
+
+  // Create animated spacecraft marker
+  const spacecraftGeometry = new THREE.ConeGeometry(4, 10, 4);
+  const spacecraftMaterial = new THREE.MeshStandardMaterial({
+    color: arcColor,
+    emissive: arcColor,
+    emissiveIntensity: 0.6,
+    roughness: 0.3,
+    metalness: 0.8
+  });
+  const spacecraft = new THREE.Mesh(spacecraftGeometry, spacecraftMaterial);
+  trajectoryGroup.add(spacecraft);
+
+  // Add glow effect to spacecraft
+  const glowGeometry = new THREE.SphereGeometry(6, 8, 8);
+  const glowMaterial = new THREE.MeshBasicMaterial({
+    color: arcColor,
+    transparent: true,
+    opacity: 0.3
+  });
+  const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+  spacecraft.add(glow);
+
+  // Animate spacecraft along trajectory
+  let animationProgress = 0;
+  const animationSpeed = 0.003;
+
+  function animateSpacecraft() {
+    if (!trajectoryGroup || !spacecraft) return;
+
+    animationProgress += animationSpeed;
+    if (animationProgress > 1) animationProgress = 0;
+
+    const pointIndex = Math.floor(animationProgress * (curvePoints.length - 1));
+    const currentPoint = curvePoints[pointIndex];
+    const nextPoint = curvePoints[Math.min(pointIndex + 1, curvePoints.length - 1)];
+
+    spacecraft.position.copy(currentPoint);
+
+    // Orient spacecraft along trajectory
+    const direction = new THREE.Vector3().subVectors(nextPoint, currentPoint).normalize();
+    spacecraft.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+
+    // Pulse glow effect
+    glow.scale.setScalar(1 + Math.sin(Date.now() * 0.005) * 0.2);
+  }
+
+  // Store animation function for cleanup
+  trajectoryGroup.userData.animate = animateSpacecraft;
+
+  // Add trajectory info panel update
+  console.log(`Trajectory displayed for ${artifact.name} (${artifact.type} - ${artifact.status})`);
+
+  // Focus camera on trajectory
+  if (!isCurrentlyOrbiting) {
+    const midPoint = curvePoints[Math.floor(curvePoints.length / 2)];
+    const focusPos = new THREE.Vector3(
+      midPoint.x + 200,
+      midPoint.y + 200,
+      midPoint.z + 200
+    );
+
+    const start = camera.position.clone();
+    const end = focusPos;
+    const duration = 1500;
+    const startTime = Date.now();
+
+    function animateCamera() {
+      const elapsed = Date.now() - startTime;
+      const t = Math.min(1, elapsed / duration);
+      const eased = t * (2 - t);
+
+      camera.position.lerpVectors(start, end, eased);
+      camera.lookAt(0, 0, 0);
+
+      if (t < 1) {
+        requestAnimationFrame(animateCamera);
+      }
+    }
+
+    animateCamera();
+  }
+}
+
+function clearTrajectory() {
+  if (trajectoryGroup) {
+    scene.remove(trajectoryGroup);
+    trajectoryGroup = null;
+  }
+  if (earthMarker) {
+    earthMarker = null;
+  }
+}
+
 function onKeyDown(event) {
   // Check if search is focused
   if (document.activeElement === document.getElementById('searchBox')) {
@@ -1050,12 +1356,26 @@ function bindUI() {
     if (e.key === 'Enter') {
       // Focus on first matching artifact
       const query = state.searchQuery.toLowerCase();
-      const match = ARTIFACTS.find(a => 
+      const match = ARTIFACTS.find(a =>
         a.name.toLowerCase().includes(query) || String(a.year).includes(query)
       );
       if (match) {
         focusOnCoords(match.lat, match.lon);
       }
+    }
+  });
+
+  // Mission panel buttons
+  document.getElementById('panelClose').addEventListener('click', closeMissionPanel);
+  document.getElementById('panelFocus').addEventListener('click', () => {
+    const artifactName = document.getElementById('missionPanel').dataset.artifactName;
+    focusOnArtifact(artifactName);
+  });
+  document.getElementById('panelTrajectory').addEventListener('click', () => {
+    const artifactName = document.getElementById('missionPanel').dataset.artifactName;
+    const artifact = ARTIFACTS.find(a => a.name === artifactName);
+    if (artifact) {
+      showTrajectory(artifact);
     }
   });
 }
@@ -1066,6 +1386,12 @@ function bindUI() {
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
+
+  // Animate trajectory spacecraft if active
+  if (trajectoryGroup && trajectoryGroup.userData.animate) {
+    trajectoryGroup.userData.animate();
+  }
+
   renderer.render(scene, camera);
 }
 

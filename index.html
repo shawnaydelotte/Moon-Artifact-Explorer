@@ -48,9 +48,9 @@
       <input type="text" id="searchBox" placeholder="Search artifacts... (/)">
       <div id="filters">
         <h4>FILTER BY ORIGIN</h4>
+        <label><input type="checkbox" id="filterUS" checked> United States</label>
         <label><input type="checkbox" id="filterSovietUnion" checked> Soviet Union</label>
         <label><input type="checkbox" id="filterRussia" checked> Russia</label>
-        <label><input type="checkbox" id="filterUS" checked> United States</label>
         <label><input type="checkbox" id="filterChina" checked> China</label>
         <label><input type="checkbox" id="filterIndia" checked> India</label>
         <label><input type="checkbox" id="filterJapan" checked> Japan</label>
@@ -63,7 +63,44 @@
   
   <!-- Tooltip -->
   <div id="tooltip"></div>
-  
+
+  <!-- Mission Details Panel -->
+  <div id="missionPanel" class="hidden">
+    <div class="panel-header">
+      <h2 id="panelTitle">Mission Name</h2>
+      <button id="panelClose">&times;</button>
+    </div>
+    <div class="panel-content">
+      <div class="mission-badge">
+        <div id="panelOperator" class="operator-badge"></div>
+        <div id="panelYear" class="year-badge"></div>
+      </div>
+      <div class="mission-stats">
+        <div class="stat-item">
+          <span class="stat-label">Type:</span>
+          <span id="panelType" class="stat-value"></span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Status:</span>
+          <span id="panelStatus" class="stat-value"></span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Location:</span>
+          <span id="panelCoords" class="stat-value"></span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Elevation:</span>
+          <span id="panelElevation" class="stat-value"></span>
+        </div>
+      </div>
+      <div id="panelDescription" class="mission-description"></div>
+      <div class="panel-actions">
+        <button id="panelFocus" class="action-btn">Focus on Mission</button>
+        <button id="panelTrajectory" class="action-btn">Show Trajectory</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Help Modal -->
   <div id="helpModal" class="hidden">
     <div class="modal-content">
