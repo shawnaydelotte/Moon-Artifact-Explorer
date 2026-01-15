@@ -148,7 +148,7 @@ function createGrid() {
     color: 0x00ff66,
     wireframe: true,
     transparent: true,
-    opacity: 0.15
+    opacity: 0.05 // Much more subtle
   });
   gridMesh = new THREE.Mesh(geometry, material);
   moonGroup.add(gridMesh);
@@ -203,12 +203,12 @@ function createTerrain() {
   terrainMesh = new THREE.Mesh(geometry, solidMaterial);
   moonGroup.add(terrainMesh);
 
-  // Wireframe overlay with enhanced styling
+  // Wireframe overlay with subtle styling
   const wireMaterial = new THREE.MeshBasicMaterial({
     color: 0x00ff66,
     wireframe: true,
     transparent: true,
-    opacity: 0.25
+    opacity: 0.08 // Much more subtle
   });
   wireframeMesh = new THREE.Mesh(geometry.clone(), wireMaterial);
   wireframeMesh.scale.set(1.001, 1.001, 1.001); // Slightly larger to prevent z-fighting
@@ -488,33 +488,143 @@ function createTextSprite(text) {
 function createResources() {
   for (const resource of RESOURCES) {
     const color = RESOURCE_COLORS[resource.type] || 0xffffff;
-    
-    // Create ring geometry for resource area
+
+    // Create ring geometry for resource area (outer boundary)
     const radiusDeg = resource.radius / 111 / Math.max(0.1, Math.cos(resource.lat * Math.PI / 180));
-    const points = [];
-    
-    for (let i = 0; i <= 32; i++) {
-      const angle = (i / 32) * Math.PI * 2;
+    const outerPoints = [];
+    const innerPoints = [];
+
+    // Create double ring for filled effect
+    for (let i = 0; i <= 64; i++) { // More segments for smoother circles
+      const angle = (i / 64) * Math.PI * 2;
       const dlat = radiusDeg * Math.sin(angle);
       const dlon = radiusDeg * Math.cos(angle);
       const elev = window.elevationData ? getElevationAt(resource.lat + dlat, resource.lon + dlon, window.elevationData) : 0;
-      const pos = latLonToVector3(resource.lat + dlat, resource.lon + dlon, MOON_RADIUS + elev * 2 + 2);
-      points.push(pos);
+      const pos = latLonToVector3(resource.lat + dlat, resource.lon + dlon, MOON_RADIUS + elev * 2 + 3);
+      outerPoints.push(pos);
+
+      // Inner ring at 70% radius
+      const innerLat = radiusDeg * 0.7 * Math.sin(angle);
+      const innerLon = radiusDeg * 0.7 * Math.cos(angle);
+      const innerElev = window.elevationData ? getElevationAt(resource.lat + innerLat, resource.lon + innerLon, window.elevationData) : 0;
+      const innerPos = latLonToVector3(resource.lat + innerLat, resource.lon + innerLon, MOON_RADIUS + innerElev * 2 + 3);
+      innerPoints.push(innerPos);
     }
-    
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineBasicMaterial({
+
+    // Outer ring (brighter)
+    const outerGeometry = new THREE.BufferGeometry().setFromPoints(outerPoints);
+    const outerMaterial = new THREE.LineBasicMaterial({
       color: color,
       transparent: true,
-      opacity: resource.concentration * 0.7
+      opacity: resource.concentration * 0.9,
+      linewidth: 2
     });
-    const ring = new THREE.Line(geometry, material);
-    ring.userData = resource;
-    ring.visible = false;
-    
-    moonGroup.add(ring);
-    resourceMeshes.push(ring);
+    const outerRing = new THREE.Line(outerGeometry, outerMaterial);
+    outerRing.userData = resource;
+    outerRing.visible = false;
+
+    // Inner ring (subtle)
+    const innerGeometry = new THREE.BufferGeometry().setFromPoints(innerPoints);
+    const innerMaterial = new THREE.LineBasicMaterial({
+      color: color,
+      transparent: true,
+      opacity: resource.concentration * 0.5,
+      linewidth: 1
+    });
+    const innerRing = new THREE.Line(innerGeometry, innerMaterial);
+    innerRing.userData = resource;
+    innerRing.visible = false;
+
+    // Center marker (glowing dot)
+    const centerElev = window.elevationData ? getElevationAt(resource.lat, resource.lon, window.elevationData) : 0;
+    const centerPos = latLonToVector3(resource.lat, resource.lon, MOON_RADIUS + centerElev * 2 + 5);
+    const markerGeometry = new THREE.SphereGeometry(3, 8, 8);
+    const markerMaterial = new THREE.MeshBasicMaterial({
+      color: color,
+      transparent: true,
+      opacity: 0.9
+    });
+    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+    marker.position.copy(centerPos);
+    marker.userData = resource;
+    marker.visible = false;
+
+    // Resource label
+    const label = createResourceLabel(resource);
+    label.position.copy(centerPos);
+    label.position.y += 15;
+    label.visible = false;
+
+    moonGroup.add(outerRing);
+    moonGroup.add(innerRing);
+    moonGroup.add(marker);
+    moonGroup.add(label);
+
+    // Store all parts together
+    resourceMeshes.push({
+      outer: outerRing,
+      inner: innerRing,
+      marker: marker,
+      label: label,
+      data: resource
+    });
   }
+}
+
+// Create label for resource deposits
+function createResourceLabel(resource) {
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  canvas.width = 256;
+  canvas.height = 80;
+
+  const color = RESOURCE_COLORS[resource.type] || 0xffffff;
+  const colorStr = `rgb(${(color >> 16) & 255}, ${(color >> 8) & 255}, ${color & 255})`;
+
+  // Background
+  context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  context.roundRect(8, 8, 240, 64, 4);
+  context.fill();
+
+  // Border with resource color
+  context.strokeStyle = colorStr;
+  context.lineWidth = 2;
+  context.roundRect(8, 8, 240, 64, 4);
+  context.stroke();
+
+  // Resource type
+  context.font = 'bold 18px monospace';
+  context.textAlign = 'center';
+  context.fillStyle = colorStr;
+  context.fillText(resource.type.toUpperCase(), 128, 28);
+
+  // Concentration bar
+  const barWidth = 200;
+  const barX = 28;
+  const barY = 40;
+
+  context.fillStyle = 'rgba(255, 255, 255, 0.2)';
+  context.fillRect(barX, barY, barWidth, 8);
+
+  context.fillStyle = colorStr;
+  context.fillRect(barX, barY, barWidth * resource.concentration, 8);
+
+  // Concentration text
+  context.font = '12px monospace';
+  context.fillStyle = '#fff';
+  context.fillText(`${(resource.concentration * 100).toFixed(0)}% concentration`, 128, 62);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(60, 20, 1);
+  sprite.renderOrder = 998;
+
+  return sprite;
 }
 
 // ============================================================
@@ -618,18 +728,27 @@ function updateArtifactVisibility() {
 }
 
 function updateResourceVisibility() {
-  for (const mesh of resourceMeshes) {
-    const type = mesh.userData.type;
+  for (const resourceGroup of resourceMeshes) {
+    const type = resourceGroup.data.type;
     let visible = false;
-    
+
     if (type === 'water' && state.showWater) visible = true;
     if (type === 'helium' && state.showHelium) visible = true;
     if (type === 'titanium' && state.showTitanium) visible = true;
     if (type === 'kreep' && state.showKreep) visible = true;
     if (type === 'minerals' && state.showMinerals) visible = true;
-    
-    mesh.visible = visible;
-    mesh.material.opacity = mesh.userData.concentration * state.resourceOpacity;
+
+    // Update visibility for all parts
+    resourceGroup.outer.visible = visible;
+    resourceGroup.inner.visible = visible;
+    resourceGroup.marker.visible = visible;
+    resourceGroup.label.visible = visible;
+
+    // Update opacity based on concentration and global resource opacity
+    const opacity = resourceGroup.data.concentration * state.resourceOpacity;
+    resourceGroup.outer.material.opacity = opacity * 0.9;
+    resourceGroup.inner.material.opacity = opacity * 0.5;
+    resourceGroup.marker.material.opacity = opacity * 0.9;
   }
 }
 
