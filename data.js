@@ -133,12 +133,15 @@ export const RESOURCES = [
   { name: "Mare Imbrium KREEP", type: "kreep", lat: 38.0, lon: -17.0, radius: 400, concentration: 0.82 },
   { name: "Aristarchus Plateau KREEP", type: "kreep", lat: 26.0, lon: -47.0, radius: 150, concentration: 0.75 },
   
-  // Mineral deposits
-  { name: "Aristarchus Pyroclastics", type: "minerals", lat: 26.8, lon: -50.8, radius: 40, concentration: 0.85 },
-  { name: "Reiner Gamma", type: "minerals", lat: 7.5, lon: -59.0, radius: 70, concentration: 0.70 },
-  { name: "South Pole-Aitken Basin", type: "minerals", lat: -50.0, lon: -165.0, radius: 1200, concentration: 0.65 },
-  { name: "Tycho Ejecta", type: "minerals", lat: -43.31, lon: -11.36, radius: 120, concentration: 0.72 },
-  { name: "Copernicus Ejecta", type: "minerals", lat: 9.62, lon: -20.08, radius: 130, concentration: 0.68 }
+  // Mineral deposits (detailed by type)
+  { name: "Aristarchus Pyroclastics", type: "minerals", subtype: "Volcanic Glass", lat: 26.8, lon: -50.8, radius: 40, concentration: 0.85, description: "Dark mantle deposits rich in volcanic glass beads and titanium" },
+  { name: "Reiner Gamma Swirl", type: "minerals", subtype: "Magnetic Anomaly", lat: 7.5, lon: -59.0, radius: 70, concentration: 0.70, description: "High-albedo swirl associated with crustal magnetic field" },
+  { name: "South Pole-Aitken Basin", type: "minerals", subtype: "Impact Melt", lat: -50.0, lon: -165.0, radius: 1200, concentration: 0.65, description: "Ancient impact basin exposing lunar mantle materials with olivine and pyroxene" },
+  { name: "Tycho Central Peak", type: "minerals", subtype: "Anorthosite", lat: -43.31, lon: -11.36, radius: 120, concentration: 0.72, description: "Central peak with exposed anorthositic highland crust" },
+  { name: "Copernicus Ejecta", type: "minerals", subtype: "Fresh Regolith", lat: 9.62, lon: -20.08, radius: 130, concentration: 0.68, description: "Bright ray system with freshly exposed minerals from deep excavation" },
+  { name: "Mare Moscoviense", type: "minerals", subtype: "Rare Farside Mare", lat: 27.3, lon: 147.9, radius: 180, concentration: 0.80, description: "One of few maria on the far side with basaltic composition" },
+  { name: "Orientale Basin Ring", type: "minerals", subtype: "Multi-ring Impact", lat: -19.4, lon: -92.8, radius: 300, concentration: 0.75, description: "Well-preserved multi-ring impact structure with mixed crustal materials" },
+  { name: "Compton-Belkovich Thorium", type: "minerals", subtype: "Silicic Volcanism", lat: 61.1, lon: 99.5, radius: 50, concentration: 0.78, description: "Rare non-basaltic volcanic complex enriched in thorium and uranium" }
 ];
 
 // Status colors

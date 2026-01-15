@@ -18,14 +18,15 @@ const state = {
   showTerrain: true,
   showPoles: true,
   terrainMode: 2, // 0=wire, 1=solid, 2=hybrid
-  
+  showArtifacts: true,
+
   showWater: false,
   showHelium: false,
   showTitanium: false,
   showKreep: false,
   showMinerals: false,
   resourceOpacity: 0.7,
-  
+
   filterUS: true,
   filterSovietUnion: true,
   filterRussia: true,
@@ -35,7 +36,7 @@ const state = {
   filterIsrael: true,
   filterEurope: true,
   searchQuery: '',
-  
+
   showHelp: false
 };
 
@@ -578,44 +579,59 @@ function createResources() {
 function createResourceLabel(resource) {
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
-  canvas.width = 256;
-  canvas.height = 80;
+
+  // Larger canvas for minerals with subtype
+  const hasSubtype = resource.type === 'minerals' && resource.subtype;
+  canvas.width = 300;
+  canvas.height = hasSubtype ? 100 : 80;
 
   const color = RESOURCE_COLORS[resource.type] || 0xffffff;
   const colorStr = `rgb(${(color >> 16) & 255}, ${(color >> 8) & 255}, ${color & 255})`;
 
   // Background
-  context.fillStyle = 'rgba(0, 0, 0, 0.7)';
-  context.roundRect(8, 8, 240, 64, 4);
+  context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+  context.roundRect(8, 8, canvas.width - 16, canvas.height - 16, 4);
   context.fill();
 
   // Border with resource color
   context.strokeStyle = colorStr;
   context.lineWidth = 2;
-  context.roundRect(8, 8, 240, 64, 4);
+  context.roundRect(8, 8, canvas.width - 16, canvas.height - 16, 4);
   context.stroke();
+
+  const centerX = canvas.width / 2;
+  let yOffset = 28;
 
   // Resource type
   context.font = 'bold 18px monospace';
   context.textAlign = 'center';
   context.fillStyle = colorStr;
-  context.fillText(resource.type.toUpperCase(), 128, 28);
+  context.fillText(resource.type.toUpperCase(), centerX, yOffset);
+
+  // Subtype for minerals
+  if (hasSubtype) {
+    yOffset += 18;
+    context.font = '13px monospace';
+    context.fillStyle = '#aaa';
+    context.fillText(resource.subtype, centerX, yOffset);
+  }
 
   // Concentration bar
-  const barWidth = 200;
+  yOffset += 18;
+  const barWidth = canvas.width - 56;
   const barX = 28;
-  const barY = 40;
 
   context.fillStyle = 'rgba(255, 255, 255, 0.2)';
-  context.fillRect(barX, barY, barWidth, 8);
+  context.fillRect(barX, yOffset - 8, barWidth, 8);
 
   context.fillStyle = colorStr;
-  context.fillRect(barX, barY, barWidth * resource.concentration, 8);
+  context.fillRect(barX, yOffset - 8, barWidth * resource.concentration, 8);
 
   // Concentration text
-  context.font = '12px monospace';
+  yOffset += 10;
+  context.font = '11px monospace';
   context.fillStyle = '#fff';
-  context.fillText(`${(resource.concentration * 100).toFixed(0)}% concentration`, 128, 62);
+  context.fillText(`${(resource.concentration * 100).toFixed(0)}% concentration`, centerX, yOffset);
 
   const texture = new THREE.CanvasTexture(canvas);
   const material = new THREE.SpriteMaterial({
@@ -624,7 +640,10 @@ function createResourceLabel(resource) {
     depthTest: false
   });
   const sprite = new THREE.Sprite(material);
-  sprite.scale.set(60, 20, 1);
+
+  // Adjust scale based on canvas size
+  const scale = hasSubtype ? 75 : 60;
+  sprite.scale.set(scale, (canvas.height / canvas.width) * scale, 1);
   sprite.renderOrder = 998;
 
   return sprite;
@@ -698,11 +717,19 @@ function updateVisibility() {
 function updateArtifactVisibility() {
   const query = state.searchQuery.toLowerCase();
   let visibleCount = 0;
-  
+
   for (let i = 0; i < artifactMarkers.length; i++) {
     const { marker, line, data } = artifactMarkers[i];
     const label = artifactLabels[i];
-    
+
+    // Check if artifacts are globally enabled
+    if (!state.showArtifacts) {
+      marker.visible = false;
+      line.visible = false;
+      if (label) label.visible = false;
+      continue;
+    }
+
     // Check filters - match each country individually
     let showByOrigin = false;
     if (data.operator === 'Soviet Union' && state.filterSovietUnion) showByOrigin = true;
@@ -713,20 +740,20 @@ function updateArtifactVisibility() {
     if (data.operator === 'Japan' && state.filterJapan) showByOrigin = true;
     if (data.operator === 'Israel' && state.filterIsrael) showByOrigin = true;
     if (data.operator === 'Europe' && state.filterEurope) showByOrigin = true;
-    
+
     // Check search
-    const matchesSearch = query === '' || 
+    const matchesSearch = query === '' ||
                           data.name.toLowerCase().includes(query) ||
                           String(data.year).includes(query);
-    
+
     const visible = showByOrigin && matchesSearch;
     marker.visible = visible;
     line.visible = visible;
     if (label) label.visible = visible && state.showLabels;
-    
+
     if (visible) visibleCount++;
   }
-  
+
   document.getElementById('artifactCount').textContent = `Showing ${visibleCount} of ${ARTIFACTS.length} artifacts`;
 }
 
@@ -771,23 +798,23 @@ function onWindowResize() {
 function onMouseMove(event) {
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-  
+
   // Raycast for hover
   raycaster.setFromCamera(mouse, camera);
-  
+
   const markers = artifactMarkers.filter(m => m.marker.visible).map(m => m.marker);
   const intersects = raycaster.intersectObjects(markers);
-  
+
   const tooltip = document.getElementById('tooltip');
-  
+
   if (intersects.length > 0) {
     const artifact = intersects[0].object.userData;
     hoveredArtifact = artifact;
-    
+
     // Update tooltip
     const elev = window.elevationData ? getElevationAt(artifact.lat, artifact.lon, window.elevationData) : 0;
     const elevKm = (elev / (MOON_RADIUS / MOON_RADIUS_KM)).toFixed(1);
-    
+
     tooltip.innerHTML = `
       <div class="name">${artifact.name}</div>
       <div class="detail">Year: ${artifact.year}</div>
@@ -797,11 +824,11 @@ function onMouseMove(event) {
       <div class="detail">Elevation: ${elevKm > 0 ? '+' : ''}${elevKm} km</div>
       ${artifact.description ? `<div class="description">${artifact.description}</div>` : ''}
     `;
-    
+
     tooltip.style.display = 'block';
     tooltip.style.left = event.clientX + 15 + 'px';
     tooltip.style.top = event.clientY + 15 + 'px';
-    
+
     // Keep tooltip on screen
     const rect = tooltip.getBoundingClientRect();
     if (rect.right > window.innerWidth) {
@@ -810,12 +837,46 @@ function onMouseMove(event) {
     if (rect.bottom > window.innerHeight) {
       tooltip.style.top = event.clientY - rect.height - 15 + 'px';
     }
-    
+
     document.body.style.cursor = 'pointer';
   } else {
-    hoveredArtifact = null;
-    tooltip.style.display = 'none';
-    document.body.style.cursor = 'default';
+    // Check for resource hover
+    const resourceMarkers = resourceMeshes
+      .filter(r => r.marker.visible)
+      .map(r => r.marker);
+    const resourceIntersects = raycaster.intersectObjects(resourceMarkers);
+
+    if (resourceIntersects.length > 0) {
+      const resource = resourceIntersects[0].object.userData;
+
+      tooltip.innerHTML = `
+        <div class="name">${resource.name}</div>
+        <div class="detail">Type: ${resource.type.toUpperCase()}</div>
+        ${resource.subtype ? `<div class="detail">Subtype: ${resource.subtype}</div>` : ''}
+        <div class="coords">${resource.lat.toFixed(2)}° lat, ${resource.lon.toFixed(2)}° lon</div>
+        <div class="detail">Radius: ~${resource.radius} km</div>
+        <div class="detail">Concentration: ${(resource.concentration * 100).toFixed(0)}%</div>
+        ${resource.description ? `<div class="description">${resource.description}</div>` : ''}
+      `;
+
+      tooltip.style.display = 'block';
+      tooltip.style.left = event.clientX + 15 + 'px';
+      tooltip.style.top = event.clientY + 15 + 'px';
+
+      const rect = tooltip.getBoundingClientRect();
+      if (rect.right > window.innerWidth) {
+        tooltip.style.left = event.clientX - rect.width - 15 + 'px';
+      }
+      if (rect.bottom > window.innerHeight) {
+        tooltip.style.top = event.clientY - rect.height - 15 + 'px';
+      }
+
+      document.body.style.cursor = 'pointer';
+    } else {
+      hoveredArtifact = null;
+      tooltip.style.display = 'none';
+      document.body.style.cursor = 'default';
+    }
   }
 }
 
@@ -1210,6 +1271,11 @@ function onKeyDown(event) {
     document.getElementById('togglePoles').checked = state.showPoles;
     updateVisibility();
   }
+  if (key === 'm') {
+    state.showArtifacts = !state.showArtifacts;
+    document.getElementById('toggleArtifacts').checked = state.showArtifacts;
+    updateArtifactVisibility();
+  }
   if (key === 'v') {
     state.terrainMode = (state.terrainMode + 1) % 3;
     updateVisibility();
@@ -1343,7 +1409,11 @@ function bindUI() {
     state.showPoles = e.target.checked;
     updateVisibility();
   });
-  
+  document.getElementById('toggleArtifacts').addEventListener('change', (e) => {
+    state.showArtifacts = e.target.checked;
+    updateArtifactVisibility();
+  });
+
   // Resource toggles
   document.getElementById('toggleWater').addEventListener('change', (e) => {
     state.showWater = e.target.checked;
