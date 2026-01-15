@@ -26,9 +26,14 @@ const state = {
   showMinerals: false,
   resourceOpacity: 0.7,
   
-  filterSoviet: true,
+  filterSovietUnion: true,
+  filterRussia: true,
   filterUS: true,
-  filterOther: true,
+  filterChina: true,
+  filterIndia: true,
+  filterJapan: true,
+  filterIsrael: true,
+  filterEurope: true,
   searchQuery: '',
   
   showHelp: false
@@ -85,13 +90,23 @@ function init() {
   raycaster = new THREE.Raycaster();
   mouse = new THREE.Vector2();
   
-  // Lighting
-  const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+  // Enhanced lighting for better terrain appearance
+  const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
   scene.add(ambientLight);
-  
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+
+  // Main sun light
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
   directionalLight.position.set(500, 300, 500);
   scene.add(directionalLight);
+
+  // Subtle fill light from opposite side
+  const fillLight = new THREE.DirectionalLight(0x8888ff, 0.3);
+  fillLight.position.set(-400, 200, -400);
+  scene.add(fillLight);
+
+  // Hemisphere light for realistic sky/ground ambient
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4);
+  scene.add(hemiLight);
   
   // Moon group (holds all moon-related objects)
   moonGroup = new THREE.Group();
@@ -174,23 +189,29 @@ function createTerrain() {
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geometry.computeVertexNormals();
   
-  // Solid terrain mesh
-  const solidMaterial = new THREE.MeshLambertMaterial({
+  // Solid terrain mesh with enhanced material
+  const solidMaterial = new THREE.MeshStandardMaterial({
     vertexColors: true,
     transparent: true,
-    opacity: 0.9
+    opacity: 0.95,
+    roughness: 0.9,
+    metalness: 0.1,
+    flatShading: false,
+    emissive: 0x111111,
+    emissiveIntensity: 0.1
   });
   terrainMesh = new THREE.Mesh(geometry, solidMaterial);
   moonGroup.add(terrainMesh);
-  
-  // Wireframe overlay
+
+  // Wireframe overlay with enhanced styling
   const wireMaterial = new THREE.MeshBasicMaterial({
     color: 0x00ff66,
     wireframe: true,
     transparent: true,
-    opacity: 0.2
+    opacity: 0.25
   });
   wireframeMesh = new THREE.Mesh(geometry.clone(), wireMaterial);
+  wireframeMesh.scale.set(1.001, 1.001, 1.001); // Slightly larger to prevent z-fighting
   moonGroup.add(wireframeMesh);
   
   // Store elevation data globally
@@ -331,38 +352,93 @@ function createPoles() {
 
 function createArtifacts() {
   const markerGeometry = new THREE.BoxGeometry(6, 6, 6);
-  
+  const labelPositions = []; // Track label positions to avoid collisions
+
   for (const artifact of ARTIFACTS) {
     const color = STATUS_COLORS[artifact.status.toLowerCase()] || 0x888888;
-    const material = new THREE.MeshBasicMaterial({ color: color });
+    const material = new THREE.MeshStandardMaterial({
+      color: color,
+      emissive: color,
+      emissiveIntensity: 0.3,
+      roughness: 0.5,
+      metalness: 0.5
+    });
     const marker = new THREE.Mesh(markerGeometry, material);
-    
+
     // Position
     const elev = window.elevationData ? getElevationAt(artifact.lat, artifact.lon, window.elevationData) : 0;
     const pos = latLonToVector3(artifact.lat, artifact.lon, MOON_RADIUS + elev * 2 + 12);
     marker.position.copy(pos);
-    
+
     // Store artifact data
     marker.userData = artifact;
-    
+
     // Add line to surface
     const surfacePos = latLonToVector3(artifact.lat, artifact.lon, MOON_RADIUS + elev * 2);
     const lineGeo = new THREE.BufferGeometry().setFromPoints([surfacePos, pos]);
     const lineMat = new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.5 });
     const line = new THREE.Line(lineGeo, lineMat);
-    
+
     moonGroup.add(marker);
     moonGroup.add(line);
-    
+
     artifactMarkers.push({ marker, line, data: artifact });
-    
-    // Create label (as sprite)
+
+    // Create label with smart positioning to avoid collisions
     const label = createTextSprite(artifact.name.length > 16 ? artifact.name.slice(0, 14) + '…' : artifact.name);
-    label.position.copy(pos);
-    label.position.y += 12;
+
+    // Find non-colliding position for label
+    const labelPos = findLabelPosition(pos, labelPositions);
+    label.position.copy(labelPos);
+    labelPositions.push(labelPos);
+
     moonGroup.add(label);
     artifactLabels.push(label);
   }
+}
+
+// Find a position for label that doesn't collide with others
+function findLabelPosition(basePos, existingPositions) {
+  const offsets = [
+    { x: 0, y: 12, z: 0 },     // Above (default)
+    { x: 15, y: 8, z: 0 },     // Upper right
+    { x: -15, y: 8, z: 0 },    // Upper left
+    { x: 0, y: 20, z: 0 },     // Higher above
+    { x: 20, y: 12, z: 0 },    // Far right
+    { x: -20, y: 12, z: 0 },   // Far left
+    { x: 0, y: 28, z: 0 },     // Even higher
+    { x: 15, y: 20, z: 0 }     // High right
+  ];
+
+  const minDistance = 30; // Minimum distance between labels
+
+  for (const offset of offsets) {
+    const testPos = new THREE.Vector3(
+      basePos.x + offset.x,
+      basePos.y + offset.y,
+      basePos.z + offset.z
+    );
+
+    // Check if this position is far enough from all existing labels
+    let isClear = true;
+    for (const existing of existingPositions) {
+      if (testPos.distanceTo(existing) < minDistance) {
+        isClear = false;
+        break;
+      }
+    }
+
+    if (isClear) {
+      return testPos;
+    }
+  }
+
+  // If all positions are taken, use default with random offset
+  return new THREE.Vector3(
+    basePos.x + (Math.random() - 0.5) * 40,
+    basePos.y + 12 + Math.random() * 20,
+    basePos.z + (Math.random() - 0.5) * 40
+  );
 }
 
 function createTextSprite(text) {
@@ -370,17 +446,42 @@ function createTextSprite(text) {
   const context = canvas.getContext('2d');
   canvas.width = 256;
   canvas.height = 64;
-  
-  context.font = '24px monospace';
-  context.fillStyle = 'rgba(255, 255, 255, 0.9)';
+
+  // Add background with slight padding
+  context.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  context.roundRect(8, 12, 240, 40, 4);
+  context.fill();
+
+  // Add border
+  context.strokeStyle = 'rgba(0, 255, 102, 0.5)';
+  context.lineWidth = 1;
+  context.roundRect(8, 12, 240, 40, 4);
+  context.stroke();
+
+  // Draw text with shadow for better readability
+  context.font = 'bold 20px monospace';
   context.textAlign = 'center';
-  context.fillText(text, 128, 40);
-  
+  context.textBaseline = 'middle';
+
+  // Text shadow
+  context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+  context.fillText(text, 129, 33);
+
+  // Main text
+  context.fillStyle = 'rgba(255, 255, 255, 1.0)';
+  context.fillText(text, 128, 32);
+
   const texture = new THREE.CanvasTexture(canvas);
-  const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false, // Render on top
+    depthWrite: false
+  });
   const sprite = new THREE.Sprite(material);
   sprite.scale.set(50, 12.5, 1);
-  
+  sprite.renderOrder = 999; // Ensure labels render on top
+
   return sprite;
 }
 
@@ -489,12 +590,16 @@ function updateArtifactVisibility() {
     const { marker, line, data } = artifactMarkers[i];
     const label = artifactLabels[i];
     
-    // Check filters
+    // Check filters - match each country individually
     let showByOrigin = false;
-    if ((data.operator.includes('Soviet') || data.operator.includes('Russia')) && state.filterSoviet) showByOrigin = true;
-    if (data.operator.includes('United States') && state.filterUS) showByOrigin = true;
-    if (!data.operator.includes('Soviet') && !data.operator.includes('Russia') && 
-        !data.operator.includes('United States') && state.filterOther) showByOrigin = true;
+    if (data.operator === 'Soviet Union' && state.filterSovietUnion) showByOrigin = true;
+    if (data.operator === 'Russia' && state.filterRussia) showByOrigin = true;
+    if (data.operator === 'United States' && state.filterUS) showByOrigin = true;
+    if (data.operator === 'China' && state.filterChina) showByOrigin = true;
+    if (data.operator === 'India' && state.filterIndia) showByOrigin = true;
+    if (data.operator === 'Japan' && state.filterJapan) showByOrigin = true;
+    if (data.operator === 'Israel' && state.filterIsrael) showByOrigin = true;
+    if (data.operator === 'Europe' && state.filterEurope) showByOrigin = true;
     
     // Check search
     const matchesSearch = query === '' || 
@@ -783,17 +888,37 @@ function bindUI() {
     updateResourceVisibility();
   });
   
-  // Filters
-  document.getElementById('filterSoviet').addEventListener('change', (e) => {
-    state.filterSoviet = e.target.checked;
+  // Filters - individual country checkboxes
+  document.getElementById('filterSovietUnion').addEventListener('change', (e) => {
+    state.filterSovietUnion = e.target.checked;
+    updateArtifactVisibility();
+  });
+  document.getElementById('filterRussia').addEventListener('change', (e) => {
+    state.filterRussia = e.target.checked;
     updateArtifactVisibility();
   });
   document.getElementById('filterUS').addEventListener('change', (e) => {
     state.filterUS = e.target.checked;
     updateArtifactVisibility();
   });
-  document.getElementById('filterOther').addEventListener('change', (e) => {
-    state.filterOther = e.target.checked;
+  document.getElementById('filterChina').addEventListener('change', (e) => {
+    state.filterChina = e.target.checked;
+    updateArtifactVisibility();
+  });
+  document.getElementById('filterIndia').addEventListener('change', (e) => {
+    state.filterIndia = e.target.checked;
+    updateArtifactVisibility();
+  });
+  document.getElementById('filterJapan').addEventListener('change', (e) => {
+    state.filterJapan = e.target.checked;
+    updateArtifactVisibility();
+  });
+  document.getElementById('filterIsrael').addEventListener('change', (e) => {
+    state.filterIsrael = e.target.checked;
+    updateArtifactVisibility();
+  });
+  document.getElementById('filterEurope').addEventListener('change', (e) => {
+    state.filterEurope = e.target.checked;
     updateArtifactVisibility();
   });
   

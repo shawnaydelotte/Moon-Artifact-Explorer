@@ -137,6 +137,8 @@ canvas {
   top: 12px;
   right: 14px;
   width: 220px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
 }
 
 #searchBox {
