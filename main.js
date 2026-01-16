@@ -1481,7 +1481,7 @@ function showTrajectory(artifact) {
     // For currently orbiting missions, show elliptical orbit only
     for (let i = 0; i <= segments; i++) {
       const angle = (i / segments) * Math.PI * 2;
-      const orbitRadius = MOON_RADIUS + 80;
+      const orbitRadius = MOON_RADIUS + 100; // Increased from 80 to ensure clearance above surface
       const x = Math.cos(angle) * orbitRadius;
       const y = Math.sin(angle) * orbitRadius * 0.7; // Slight ellipse
       const z = Math.sin(angle * 2) * 20; // Add some 3D variation
@@ -1500,7 +1500,7 @@ function showTrajectory(artifact) {
     // Part 1: Approach from Earth to orbit insertion point (opposite side of landing)
     // Insert into orbit on the opposite side of the Moon from landing site
     const insertionAngle = landingTheta + Math.PI; // Opposite side
-    const orbitRadius = MOON_RADIUS + 80;
+    const orbitRadius = MOON_RADIUS + 100; // Increased from 80 to ensure clearance above surface
     const orbitInsertionPoint = new THREE.Vector3(
       -Math.sin(landingPhi) * Math.cos(insertionAngle) * orbitRadius,
       Math.cos(landingPhi) * orbitRadius,
@@ -1572,7 +1572,7 @@ function showTrajectory(artifact) {
       // Add outward bulge to prevent surface intersection (parabolic)
       // Maximum bulge at t=0.5, zero at t=0 and t=1
       const bulgeFactor = 4 * t * (1 - t); // Peaks at 0.5
-      const bulgeAmount = 30; // Additional altitude during descent
+      const bulgeAmount = 50; // Increased from 30 to ensure clearance during descent
 
       const descentPoint = new THREE.Vector3(baseX, baseY, baseZ);
       const direction = descentPoint.clone().normalize();
@@ -1586,7 +1586,7 @@ function showTrajectory(artifact) {
           Math.atan2(descentPoint.x, descentPoint.z) * (180 / Math.PI),
           window.elevationData
         ) * 2 : 0;
-      const minRadius = MOON_RADIUS + surfaceElev + 3;
+      const minRadius = MOON_RADIUS + surfaceElev + 8; // Increased from 3 to 8 for better clearance
 
       if (distanceFromCenter < minRadius) {
         descentPoint.normalize().multiplyScalar(minRadius);
@@ -1615,7 +1615,24 @@ function showTrajectory(artifact) {
       const z = Math.pow(1 - t, 2) * earthPosition.z +
                 2 * (1 - t) * t * controlPoint.z +
                 Math.pow(t, 2) * landingPos.z;
-      curvePoints.push(new THREE.Vector3(x, y, z));
+
+      const trajectoryPoint = new THREE.Vector3(x, y, z);
+
+      // Safety check: ensure trajectory stays above surface
+      const distanceFromCenter = trajectoryPoint.length();
+      const surfaceElev = window.elevationData ?
+        getElevationAt(
+          Math.asin(trajectoryPoint.y / distanceFromCenter) * (180 / Math.PI),
+          Math.atan2(trajectoryPoint.x, trajectoryPoint.z) * (180 / Math.PI),
+          window.elevationData
+        ) * 2 : 0;
+      const minRadius = MOON_RADIUS + surfaceElev + 8;
+
+      if (distanceFromCenter < minRadius) {
+        trajectoryPoint.normalize().multiplyScalar(minRadius);
+      }
+
+      curvePoints.push(trajectoryPoint);
     }
   }
 
@@ -1936,6 +1953,17 @@ function bindUI() {
       terrainMesh.material.opacity = opacity;
       terrainMesh.material.transparent = opacity < 1.0;
       terrainMesh.material.needsUpdate = true;
+    }
+
+    // Inversely adjust grid opacity - grid becomes more prominent as surface fades
+    // When surface is 100%, grid is at base 0.25
+    // When surface is 0%, grid is at max 0.8
+    if (gridMesh && gridMesh.material) {
+      const baseGridOpacity = 0.25;
+      const maxGridOpacity = 0.8;
+      const gridOpacity = baseGridOpacity + (1 - opacity) * (maxGridOpacity - baseGridOpacity);
+      gridMesh.material.opacity = gridOpacity;
+      gridMesh.material.needsUpdate = true;
     }
   });
 
