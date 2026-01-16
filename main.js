@@ -40,6 +40,7 @@ const state = {
   searchQuery: '',
 
   showHelp: false,
+  terrainOpacity: 1.0,
 
   // Visual settings
   visualSettings: {
@@ -747,44 +748,80 @@ function createResources() {
 }
 
 function createFeatureMarkers() {
-  // Create clickable markers for craters
+  // Create enhanced clickable markers for craters
   for (const crater of CRATERS) {
     const elev = window.elevationData ? getElevationAt(crater.lat, crater.lon, window.elevationData) : 0;
-    const pos = latLonToVector3(crater.lat, crater.lon, MOON_RADIUS + elev * 2 + 5);
+    const pos = latLonToVector3(crater.lat, crater.lon, MOON_RADIUS + elev * 2 + 8);
 
-    const markerGeometry = new THREE.SphereGeometry(4, 16, 16);
-    const markerMaterial = new THREE.MeshBasicMaterial({
+    // Create a glowing marker with rim effect
+    const markerGeometry = new THREE.SphereGeometry(5, 20, 20);
+    const markerMaterial = new THREE.MeshStandardMaterial({
       color: 0xff8844,
+      emissive: 0xff6622,
+      emissiveIntensity: 0.5,
       transparent: true,
-      opacity: 0.8
+      opacity: 0.9,
+      roughness: 0.3,
+      metalness: 0.2
     });
     const marker = new THREE.Mesh(markerGeometry, markerMaterial);
     marker.position.copy(pos);
     marker.userData = { ...crater, featureType: 'crater' };
     marker.visible = false; // Hidden by default, will show with toggle
 
+    // Add outer glow ring for craters
+    const glowGeometry = new THREE.SphereGeometry(7, 16, 16);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xff8844,
+      transparent: true,
+      opacity: 0.3,
+      side: THREE.BackSide
+    });
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+    glow.position.copy(pos);
+    glow.visible = false;
+    moonGroup.add(glow);
+
     moonGroup.add(marker);
-    resourceMeshes.push({ marker, data: crater, featureType: 'crater' });
+    resourceMeshes.push({ marker, glow, data: crater, featureType: 'crater' });
   }
 
-  // Create clickable markers for maria
+  // Create enhanced clickable markers for maria
   for (const mare of MARIA) {
     const elev = window.elevationData ? getElevationAt(mare.lat, mare.lon, window.elevationData) : 0;
-    const pos = latLonToVector3(mare.lat, mare.lon, MOON_RADIUS + elev * 2 + 5);
+    const pos = latLonToVector3(mare.lat, mare.lon, MOON_RADIUS + elev * 2 + 8);
 
-    const markerGeometry = new THREE.SphereGeometry(4, 16, 16);
-    const markerMaterial = new THREE.MeshBasicMaterial({
+    // Create a glowing marker with ocean-like effect
+    const markerGeometry = new THREE.SphereGeometry(5, 20, 20);
+    const markerMaterial = new THREE.MeshStandardMaterial({
       color: 0x4488ff,
+      emissive: 0x2266cc,
+      emissiveIntensity: 0.6,
       transparent: true,
-      opacity: 0.8
+      opacity: 0.9,
+      roughness: 0.2,
+      metalness: 0.3
     });
     const marker = new THREE.Mesh(markerGeometry, markerMaterial);
     marker.position.copy(pos);
     marker.userData = { ...mare, featureType: 'mare' };
     marker.visible = false; // Hidden by default, will show with toggle
 
+    // Add outer glow ring for maria
+    const glowGeometry = new THREE.SphereGeometry(7, 16, 16);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0x4488ff,
+      transparent: true,
+      opacity: 0.3,
+      side: THREE.BackSide
+    });
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+    glow.position.copy(pos);
+    glow.visible = false;
+    moonGroup.add(glow);
+
     moonGroup.add(marker);
-    resourceMeshes.push({ marker, data: mare, featureType: 'mare' });
+    resourceMeshes.push({ marker, glow, data: mare, featureType: 'mare' });
   }
 }
 
@@ -978,9 +1015,11 @@ function updateResourceVisibility() {
     if (featureType === 'crater') {
       visible = state.showCraters;
       resourceGroup.marker.visible = visible;
+      if (resourceGroup.glow) resourceGroup.glow.visible = visible;
     } else if (featureType === 'mare') {
       visible = state.showMaria;
       resourceGroup.marker.visible = visible;
+      if (resourceGroup.glow) resourceGroup.glow.visible = visible;
     } else {
       // Resource deposits
       const type = resourceGroup.data.type;
@@ -1884,6 +1923,20 @@ function bindUI() {
   document.getElementById('toggleArtifacts').addEventListener('change', (e) => {
     state.showArtifacts = e.target.checked;
     updateArtifactVisibility();
+  });
+
+  // Terrain opacity slider
+  document.getElementById('terrainOpacity').addEventListener('input', (e) => {
+    const opacity = parseInt(e.target.value) / 100;
+    state.terrainOpacity = opacity;
+    document.getElementById('terrainOpacityValue').textContent = e.target.value + '%';
+
+    // Update terrain mesh opacity
+    if (terrainMesh && terrainMesh.material) {
+      terrainMesh.material.opacity = opacity;
+      terrainMesh.material.transparent = opacity < 1.0;
+      terrainMesh.material.needsUpdate = true;
+    }
   });
 
   // Feature toggles

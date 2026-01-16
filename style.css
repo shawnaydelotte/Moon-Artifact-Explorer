@@ -119,6 +119,49 @@ canvas {
   color: #aaa;
 }
 
+.opacity-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.opacity-control input[type="range"] {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+}
+
+.opacity-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  background: #00ff66;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.opacity-control input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: #00ff66;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+.opacity-control span {
+  min-width: 35px;
+  font-size: 10px;
+  color: #00ff66;
+  font-weight: bold;
+  text-align: right;
+}
+
 .resource.water { color: #64c8ff; }
 .resource.helium { color: #ff64ff; }
 .resource.titanium { color: #ff9600; }
