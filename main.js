@@ -25,6 +25,8 @@ const state = {
   showTitanium: false,
   showKreep: false,
   showMinerals: false,
+  showCraters: false,
+  showMaria: false,
   resourceOpacity: 0.7,
 
   filterUS: true,
@@ -37,7 +39,26 @@ const state = {
   filterEurope: true,
   searchQuery: '',
 
-  showHelp: false
+  showHelp: false,
+
+  // Visual settings
+  visualSettings: {
+    starfieldEnabled: true,
+    starSize: 2.5,
+    starOpacity: 1.0,
+    starCount: 8000,
+    ambientIntensity: 0.4,
+    sunIntensity: 1.8,
+    fillIntensity: 0.3,
+    pointIntensity: 0.5,
+    textureEnabled: true,
+    surfaceRoughness: 0.95,
+    baseBrightness: 204,
+    elevationIntensity: 1.0,
+    toneMappingEnabled: true,
+    toneExposure: 1.2,
+    pixelRatio: 2.0
+  }
 };
 
 // ============================================================
@@ -54,7 +75,15 @@ let hoveredArtifact = null;
 let trajectoryGroup = null;
 let earthMarker = null;
 
+// Lighting references for dynamic control
+let ambientLight, sunLight, fillLight, pointLight;
+let starfield, starfieldMaterial;
+let terrainMaterial;
+
 function init() {
+  console.log('🚀 Moon Explorer - Init started');
+  console.log('🕒 Build timestamp:', new Date().toISOString());
+
   // Validate dependencies
   if (!THREE) {
     throw new Error('Three.js library failed to load. Please check your internet connection.');
@@ -63,18 +92,35 @@ function init() {
     throw new Error('Data files failed to load. Please ensure data.js is accessible.');
   }
 
-  // Scene
+  // Scene with photorealistic space background
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x000000);
+
+  console.log('🌙 Initializing Moon Explorer with photorealistic rendering...');
+
+  // Create realistic starfield
+  createStarfield();
 
   // Camera
   camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000);
   camera.position.set(0, 100, 500);
 
-  // Renderer
-  renderer = new THREE.WebGLRenderer({ antialias: true });
+  // Renderer with enhanced settings for photorealism
+  renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: false,
+    powerPreference: 'high-performance',
+    precision: 'highp'
+  });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap at 2x for performance
+
+  // Enhanced rendering properties
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.2;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = false; // Disabled for performance
+  renderer.physicallyCorrectLights = true;
   const container = document.getElementById('container');
   if (!container) {
     throw new Error('Container element not found. Please check index.html.');
@@ -93,23 +139,26 @@ function init() {
   raycaster = new THREE.Raycaster();
   mouse = new THREE.Vector2();
   
-  // Enhanced lighting for better terrain appearance
-  const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+  // Photorealistic lighting setup - simulating Sun illumination in space
+  // Ambient light for overall scene brightness
+  ambientLight = new THREE.AmbientLight(0x444444, state.visualSettings.ambientIntensity);
   scene.add(ambientLight);
 
-  // Main sun light
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
-  directionalLight.position.set(500, 300, 500);
-  scene.add(directionalLight);
+  // Main sun light - harsh, bright, directional (simulating the Sun)
+  sunLight = new THREE.DirectionalLight(0xffffff, state.visualSettings.sunIntensity);
+  sunLight.position.set(500, 200, 300);
+  sunLight.castShadow = false; // Disabled for performance
+  scene.add(sunLight);
 
-  // Subtle fill light from opposite side
-  const fillLight = new THREE.DirectionalLight(0x8888ff, 0.3);
-  fillLight.position.set(-400, 200, -400);
+  // Fill light from opposite side for better visibility
+  fillLight = new THREE.DirectionalLight(0xaaaaff, state.visualSettings.fillIntensity);
+  fillLight.position.set(-400, -100, -300);
   scene.add(fillLight);
 
-  // Hemisphere light for realistic sky/ground ambient
-  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4);
-  scene.add(hemiLight);
+  // Add point light for enhanced depth perception
+  pointLight = new THREE.PointLight(0xffffff, state.visualSettings.pointIntensity, 2500);
+  pointLight.position.set(400, 300, 400);
+  scene.add(pointLight);
   
   // Moon group (holds all moon-related objects)
   moonGroup = new THREE.Group();
@@ -146,13 +195,77 @@ function init() {
 // ============================================================
 // CREATE MOON COMPONENTS
 // ============================================================
+function createStarfield() {
+  // Create realistic starfield with varying star sizes and brightness
+  const starGeometry = new THREE.BufferGeometry();
+  const starCount = 8000;
+  const positions = new Float32Array(starCount * 3);
+  const colors = new Float32Array(starCount * 3);
+  const sizes = new Float32Array(starCount);
+
+  for (let i = 0; i < starCount; i++) {
+    // Random position on a large sphere
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(Math.random() * 2 - 1);
+    const radius = 3000;
+
+    positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+    positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+    positions[i * 3 + 2] = radius * Math.cos(phi);
+
+    // Vary star colors (white, blue-white, yellow-white)
+    const colorVariation = Math.random();
+    if (colorVariation > 0.95) {
+      // Blue giants (rare)
+      colors[i * 3] = 0.7 + Math.random() * 0.3;
+      colors[i * 3 + 1] = 0.8 + Math.random() * 0.2;
+      colors[i * 3 + 2] = 1.0;
+    } else if (colorVariation > 0.7) {
+      // Yellow-white stars
+      colors[i * 3] = 1.0;
+      colors[i * 3 + 1] = 0.95 + Math.random() * 0.05;
+      colors[i * 3 + 2] = 0.8 + Math.random() * 0.2;
+    } else {
+      // White stars (most common)
+      const brightness = 0.85 + Math.random() * 0.15;
+      colors[i * 3] = brightness;
+      colors[i * 3 + 1] = brightness;
+      colors[i * 3 + 2] = brightness;
+    }
+
+    // Vary star sizes (most small, few large/bright)
+    sizes[i] = Math.random() < 0.95 ? Math.random() * 1.5 : Math.random() * 3 + 1;
+  }
+
+  starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  starGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  starGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+  starfieldMaterial = new THREE.PointsMaterial({
+    size: state.visualSettings.starSize,
+    vertexColors: true,
+    transparent: true,
+    opacity: state.visualSettings.starOpacity,
+    sizeAttenuation: false,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+
+  starfield = new THREE.Points(starGeometry, starfieldMaterial);
+  starfield.visible = state.visualSettings.starfieldEnabled;
+  scene.add(starfield);
+  console.log('✓ Starfield created with', starCount, 'stars');
+}
+
 function createGrid() {
   const geometry = new THREE.SphereGeometry(MOON_RADIUS, 36, 18);
   const material = new THREE.MeshBasicMaterial({
-    color: 0x00ff66,
+    color: 0x00dd44, // Darker green for better contrast
     wireframe: true,
     transparent: true,
-    opacity: 0.05 // Much more subtle
+    opacity: 0.25, // Increased opacity for better visibility
+    depthTest: true,
+    depthWrite: false
   });
   gridMesh = new THREE.Mesh(geometry, material);
   moonGroup.add(gridMesh);
@@ -161,63 +274,101 @@ function createGrid() {
 function createTerrain() {
   // Generate elevation data
   const elevationData = generateElevation();
-  
-  // Create terrain geometry
+
+  // Create terrain geometry with higher resolution for photorealism
   const geometry = new THREE.SphereGeometry(MOON_RADIUS, SEGMENTS, SEGMENTS / 2);
   const positions = geometry.attributes.position;
   const colors = [];
-  
+
   for (let i = 0; i < positions.count; i++) {
     const x = positions.getX(i);
     const y = positions.getY(i);
     const z = positions.getZ(i);
-    
+
     // Convert to lat/lon
     const r = Math.sqrt(x * x + y * y + z * z);
     const lat = Math.asin(y / r) * (180 / Math.PI);
     const lon = Math.atan2(x, z) * (180 / Math.PI);
-    
+
     // Get elevation
     const elev = getElevationAt(lat, lon, elevationData);
     const newR = MOON_RADIUS + elev * 2;
-    
+
     // Scale position
     const scale = newR / r;
     positions.setXYZ(i, x * scale, y * scale, z * scale);
-    
-    // Color based on elevation
+
+    // Color based on elevation - more realistic lunar colors
     const color = getElevationColor(elev);
     colors.push(color.r, color.g, color.b);
   }
-  
+
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geometry.computeVertexNormals();
-  
-  // Solid terrain mesh with enhanced material
-  const solidMaterial = new THREE.MeshStandardMaterial({
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.95,
-    roughness: 0.9,
-    metalness: 0.1,
-    flatShading: false,
-    emissive: 0x111111,
-    emissiveIntensity: 0.1
-  });
-  terrainMesh = new THREE.Mesh(geometry, solidMaterial);
-  moonGroup.add(terrainMesh);
 
-  // Wireframe overlay with subtle styling
+  // Load high-resolution NASA lunar textures for photorealism
+  const textureLoader = new THREE.TextureLoader();
+
+  // Using CDN-hosted NASA textures (reliable public access)
+  const moonTexture = textureLoader.load(
+    'https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/textures/planets/moon_1024.jpg',
+    (texture) => {
+      console.log('✓ Moon texture loaded successfully');
+      texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    },
+    undefined,
+    (error) => {
+      console.warn('⚠ Could not load moon texture, using vertex colors:', error);
+    }
+  );
+
+  // Photorealistic material with PBR (Physically Based Rendering)
+  terrainMaterial = new THREE.MeshStandardMaterial({
+    // Use real textures if loaded, fall back to vertex colors
+    map: state.visualSettings.textureEnabled ? moonTexture : null,
+
+    // Fallback vertex colors for elevation-based coloring
+    vertexColors: true,
+
+    // Lunar regolith material properties
+    roughness: state.visualSettings.surfaceRoughness,
+    metalness: 0.0,       // No metallic properties
+
+    // Realistic lunar surface appearance
+    color: new THREE.Color(
+      state.visualSettings.baseBrightness / 255,
+      state.visualSettings.baseBrightness / 255,
+      state.visualSettings.baseBrightness / 255
+    ),
+
+    // No transparency for solid surface
+    transparent: false,
+
+    // Smooth shading for realistic appearance
+    flatShading: false,
+
+    // Physical accuracy
+    envMapIntensity: 0.0, // No environment reflections in space
+  });
+
+  terrainMesh = new THREE.Mesh(geometry, terrainMaterial);
+  moonGroup.add(terrainMesh);
+  console.log('✓ Terrain mesh created with photorealistic PBR material');
+
+  // Wireframe overlay with subtle styling (optional, can be toggled)
   const wireMaterial = new THREE.MeshBasicMaterial({
     color: 0x00ff66,
     wireframe: true,
     transparent: true,
-    opacity: 0.08 // Much more subtle
+    opacity: 0.04,  // Even more subtle for photorealism
+    depthTest: true,
+    depthWrite: false
   });
   wireframeMesh = new THREE.Mesh(geometry.clone(), wireMaterial);
-  wireframeMesh.scale.set(1.001, 1.001, 1.001); // Slightly larger to prevent z-fighting
+  wireframeMesh.scale.set(1.002, 1.002, 1.002); // Slightly larger to prevent z-fighting
   moonGroup.add(wireframeMesh);
-  
+
   // Store elevation data globally
   window.elevationData = elevationData;
 }
@@ -311,15 +462,20 @@ function getElevationAt(lat, lon, data) {
 
 function getElevationColor(elev) {
   const elevKm = elev / (MOON_RADIUS / MOON_RADIUS_KM);
-  
-  if (elevKm < -6) return new THREE.Color(0x1e2840);
-  if (elevKm < -4) return new THREE.Color(0x323c50);
-  if (elevKm < -2) return new THREE.Color(0x46505f);
-  if (elevKm < 0) return new THREE.Color(0x5a5f69);
-  if (elevKm < 2) return new THREE.Color(0x73787d);
-  if (elevKm < 4) return new THREE.Color(0x878782);
-  if (elevKm < 6) return new THREE.Color(0x918c82);
-  return new THREE.Color(0xa59f91);
+
+  // Photorealistic lunar surface colors based on Apollo samples and LRO data
+  // Mare (basalt) - dark gray/blue-gray (low elevations)
+  // Highlands (anorthosite) - light gray/tan (high elevations)
+  // Colors brightened for better visibility with photorealistic lighting
+
+  if (elevKm < -6) return new THREE.Color(0x4a4a48); // Very deep maria - darkest basalt
+  if (elevKm < -4) return new THREE.Color(0x5a5a58); // Deep maria - dark basalt
+  if (elevKm < -2) return new THREE.Color(0x6a6a68); // Maria - typical basalt
+  if (elevKm < 0) return new THREE.Color(0x7a7a78);  // Low maria/transition
+  if (elevKm < 2) return new THREE.Color(0x8d8d8a);  // Highlands transition
+  if (elevKm < 4) return new THREE.Color(0xa0a09a);  // Typical highlands - anorthosite
+  if (elevKm < 6) return new THREE.Color(0xb5b5aa);  // High highlands
+  return new THREE.Color(0xc8c8be);                   // Peaks - brightest regolith
 }
 
 function createPoles() {
@@ -585,6 +741,51 @@ function createResources() {
       data: resource
     });
   }
+
+  // Create crater and maria markers
+  createFeatureMarkers();
+}
+
+function createFeatureMarkers() {
+  // Create clickable markers for craters
+  for (const crater of CRATERS) {
+    const elev = window.elevationData ? getElevationAt(crater.lat, crater.lon, window.elevationData) : 0;
+    const pos = latLonToVector3(crater.lat, crater.lon, MOON_RADIUS + elev * 2 + 5);
+
+    const markerGeometry = new THREE.SphereGeometry(4, 16, 16);
+    const markerMaterial = new THREE.MeshBasicMaterial({
+      color: 0xff8844,
+      transparent: true,
+      opacity: 0.8
+    });
+    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+    marker.position.copy(pos);
+    marker.userData = { ...crater, featureType: 'crater' };
+    marker.visible = false; // Hidden by default, will show with toggle
+
+    moonGroup.add(marker);
+    resourceMeshes.push({ marker, data: crater, featureType: 'crater' });
+  }
+
+  // Create clickable markers for maria
+  for (const mare of MARIA) {
+    const elev = window.elevationData ? getElevationAt(mare.lat, mare.lon, window.elevationData) : 0;
+    const pos = latLonToVector3(mare.lat, mare.lon, MOON_RADIUS + elev * 2 + 5);
+
+    const markerGeometry = new THREE.SphereGeometry(4, 16, 16);
+    const markerMaterial = new THREE.MeshBasicMaterial({
+      color: 0x4488ff,
+      transparent: true,
+      opacity: 0.8
+    });
+    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+    marker.position.copy(pos);
+    marker.userData = { ...mare, featureType: 'mare' };
+    marker.visible = false; // Hidden by default, will show with toggle
+
+    moonGroup.add(marker);
+    resourceMeshes.push({ marker, data: mare, featureType: 'mare' });
+  }
 }
 
 // Create label for resource deposits
@@ -771,26 +972,38 @@ function updateArtifactVisibility() {
 
 function updateResourceVisibility() {
   for (const resourceGroup of resourceMeshes) {
-    const type = resourceGroup.data.type;
+    const featureType = resourceGroup.featureType;
     let visible = false;
 
-    if (type === 'water' && state.showWater) visible = true;
-    if (type === 'helium' && state.showHelium) visible = true;
-    if (type === 'titanium' && state.showTitanium) visible = true;
-    if (type === 'kreep' && state.showKreep) visible = true;
-    if (type === 'minerals' && state.showMinerals) visible = true;
+    if (featureType === 'crater') {
+      visible = state.showCraters;
+      resourceGroup.marker.visible = visible;
+    } else if (featureType === 'mare') {
+      visible = state.showMaria;
+      resourceGroup.marker.visible = visible;
+    } else {
+      // Resource deposits
+      const type = resourceGroup.data.type;
+      if (type === 'water' && state.showWater) visible = true;
+      if (type === 'helium' && state.showHelium) visible = true;
+      if (type === 'titanium' && state.showTitanium) visible = true;
+      if (type === 'kreep' && state.showKreep) visible = true;
+      if (type === 'minerals' && state.showMinerals) visible = true;
 
-    // Update visibility for all parts
-    resourceGroup.outer.visible = visible;
-    resourceGroup.inner.visible = visible;
-    resourceGroup.marker.visible = visible;
-    resourceGroup.label.visible = visible;
+      // Update visibility for all parts
+      if (resourceGroup.outer) resourceGroup.outer.visible = visible;
+      if (resourceGroup.inner) resourceGroup.inner.visible = visible;
+      resourceGroup.marker.visible = visible;
+      if (resourceGroup.label) resourceGroup.label.visible = visible;
 
-    // Update opacity based on concentration and global resource opacity
-    const opacity = resourceGroup.data.concentration * state.resourceOpacity;
-    resourceGroup.outer.material.opacity = opacity * 0.9;
-    resourceGroup.inner.material.opacity = opacity * 0.5;
-    resourceGroup.marker.material.opacity = opacity * 0.9;
+      // Update opacity based on concentration and global resource opacity
+      if (visible && resourceGroup.data.concentration) {
+        const opacity = resourceGroup.data.concentration * state.resourceOpacity;
+        if (resourceGroup.outer) resourceGroup.outer.material.opacity = opacity * 0.9;
+        if (resourceGroup.inner) resourceGroup.inner.material.opacity = opacity * 0.5;
+        resourceGroup.marker.material.opacity = opacity * 0.9;
+      }
+    }
   }
 }
 
@@ -832,9 +1045,11 @@ function onMouseMove(event) {
       <div class="detail">Year: ${artifact.year}</div>
       <div class="detail">Operator: ${artifact.operator}</div>
       <div class="detail">Type: ${artifact.type} | Status: ${artifact.status}</div>
+      ${artifact.mass ? `<div class="detail">Mass: ${artifact.mass}</div>` : ''}
       <div class="coords">${artifact.lat.toFixed(2)}° lat, ${artifact.lon.toFixed(2)}° lon</div>
       <div class="detail">Elevation: ${elevKm > 0 ? '+' : ''}${elevKm} km</div>
       ${artifact.description ? `<div class="description">${artifact.description}</div>` : ''}
+      ${artifact.link ? `<div class="detail" style="margin-top: 6px;"><a href="${artifact.link}" target="_blank" style="color: #00ff99; text-decoration: underline;">Learn more →</a></div>` : ''}
     `;
 
     tooltip.style.display = 'block';
@@ -869,6 +1084,7 @@ function onMouseMove(event) {
         <div class="detail">Radius: ~${resource.radius} km</div>
         <div class="detail">Concentration: ${(resource.concentration * 100).toFixed(0)}%</div>
         ${resource.description ? `<div class="description">${resource.description}</div>` : ''}
+        ${resource.link ? `<div class="detail" style="margin-top: 6px;"><a href="${resource.link}" target="_blank" style="color: #00ff99; text-decoration: underline;">Learn more →</a></div>` : ''}
       `;
 
       tooltip.style.display = 'block';
@@ -894,7 +1110,7 @@ function onMouseMove(event) {
 
 function onMouseClick(event) {
   // Skip if clicking on UI elements
-  if (event.target.closest('#hud') || event.target.closest('#missionPanel')) {
+  if (event.target.closest('#hud') || event.target.closest('.details-panel')) {
     return;
   }
 
@@ -903,12 +1119,27 @@ function onMouseClick(event) {
 
   raycaster.setFromCamera(mouse, camera);
 
+  // Check for artifact clicks
   const markers = artifactMarkers.filter(m => m.marker.visible).map(m => m.marker);
   const intersects = raycaster.intersectObjects(markers);
 
   if (intersects.length > 0) {
     const artifact = intersects[0].object.userData;
     openMissionPanel(artifact);
+    return;
+  }
+
+  // Check for resource/crater/mare clicks
+  const featureMarkers = resourceMeshes
+    .filter(r => r.marker.visible)
+    .map(r => r.marker);
+  const featureIntersects = raycaster.intersectObjects(featureMarkers);
+
+  if (featureIntersects.length > 0) {
+    const feature = featureIntersects[0].object.userData;
+    const featureType = feature.featureType || 'resource';
+    openFeaturePanel(feature, featureType);
+    return;
   }
 }
 
@@ -923,11 +1154,21 @@ function openMissionPanel(artifact) {
   document.getElementById('panelYear').textContent = artifact.year;
   document.getElementById('panelType').textContent = artifact.type;
   document.getElementById('panelStatus').textContent = artifact.status;
+  document.getElementById('panelMass').textContent = artifact.mass || 'Unknown';
   document.getElementById('panelCoords').textContent = `${artifact.lat.toFixed(3)}° ${artifact.lat >= 0 ? 'N' : 'S'}, ${Math.abs(artifact.lon).toFixed(3)}° ${artifact.lon >= 0 ? 'E' : 'W'}`;
   document.getElementById('panelElevation').textContent = `${elevKm > 0 ? '+' : ''}${elevKm} km`;
 
   const description = artifact.description || 'No additional information available for this mission.';
   document.getElementById('panelDescription').textContent = description;
+
+  // Update learn more link
+  const learnMoreBtn = document.getElementById('panelLearnMore');
+  if (artifact.link) {
+    learnMoreBtn.href = artifact.link;
+    learnMoreBtn.style.display = 'block';
+  } else {
+    learnMoreBtn.style.display = 'none';
+  }
 
   // Show panel
   panel.classList.remove('hidden');
@@ -939,6 +1180,201 @@ function openMissionPanel(artifact) {
 function closeMissionPanel() {
   document.getElementById('missionPanel').classList.add('hidden');
   clearTrajectory();
+}
+
+function openFeaturePanel(feature, type) {
+  const panel = document.getElementById('featurePanel');
+
+  // Populate panel based on feature type
+  document.getElementById('featurePanelTitle').textContent = feature.name;
+
+  // Set type badge
+  const typeBadge = document.getElementById('featurePanelType');
+  if (type === 'resource') {
+    typeBadge.textContent = feature.type.toUpperCase() + ' DEPOSIT';
+    typeBadge.style.background = 'rgba(0, 255, 255, 0.2)';
+    typeBadge.style.color = '#00ffff';
+    typeBadge.style.borderColor = '#00ffff';
+  } else if (type === 'crater') {
+    typeBadge.textContent = 'CRATER';
+    typeBadge.style.background = 'rgba(255, 136, 68, 0.2)';
+    typeBadge.style.color = '#ff8844';
+    typeBadge.style.borderColor = '#ff8844';
+  } else if (type === 'mare') {
+    typeBadge.textContent = 'MARE / BASIN';
+    typeBadge.style.background = 'rgba(68, 136, 255, 0.2)';
+    typeBadge.style.color = '#4488ff';
+    typeBadge.style.borderColor = '#4488ff';
+  }
+
+  // Populate stats
+  const statsContainer = document.getElementById('featurePanelStats');
+  statsContainer.innerHTML = '';
+
+  // Location (all features)
+  const locationItem = document.createElement('div');
+  locationItem.className = 'stat-item';
+  locationItem.innerHTML = `
+    <span class="stat-label">Location:</span>
+    <span class="stat-value">${feature.lat.toFixed(3)}° ${feature.lat >= 0 ? 'N' : 'S'}, ${Math.abs(feature.lon).toFixed(3)}° ${feature.lon >= 0 ? 'E' : 'W'}</span>
+  `;
+  statsContainer.appendChild(locationItem);
+
+  if (type === 'resource') {
+    // Add resource-specific stats
+    if (feature.subtype) {
+      const subtypeItem = document.createElement('div');
+      subtypeItem.className = 'stat-item';
+      subtypeItem.innerHTML = `
+        <span class="stat-label">Subtype:</span>
+        <span class="stat-value">${feature.subtype}</span>
+      `;
+      statsContainer.appendChild(subtypeItem);
+    }
+
+    const radiusItem = document.createElement('div');
+    radiusItem.className = 'stat-item';
+    radiusItem.innerHTML = `
+      <span class="stat-label">Radius:</span>
+      <span class="stat-value">~${feature.radius} km</span>
+    `;
+    statsContainer.appendChild(radiusItem);
+
+    const concentrationItem = document.createElement('div');
+    concentrationItem.className = 'stat-item';
+    concentrationItem.innerHTML = `
+      <span class="stat-label">Concentration:</span>
+      <span class="stat-value">${(feature.concentration * 100).toFixed(0)}%</span>
+    `;
+    statsContainer.appendChild(concentrationItem);
+  } else if (type === 'crater' || type === 'mare') {
+    // Add size for craters and maria
+    const sizeItem = document.createElement('div');
+    sizeItem.className = 'stat-item';
+    sizeItem.innerHTML = `
+      <span class="stat-label">Diameter:</span>
+      <span class="stat-value">${feature.size} km</span>
+    `;
+    statsContainer.appendChild(sizeItem);
+  }
+
+  // Set description
+  const description = feature.description || 'No additional information available for this feature.';
+  document.getElementById('featurePanelDescription').textContent = description;
+
+  // Update learn more link
+  const learnMoreBtn = document.getElementById('featurePanelLearnMore');
+  if (feature.link) {
+    learnMoreBtn.href = feature.link;
+    learnMoreBtn.style.display = 'block';
+  } else {
+    learnMoreBtn.style.display = 'none';
+  }
+
+  // Show panel
+  panel.classList.remove('hidden');
+
+  // Store current feature for button actions
+  panel.dataset.featureLat = feature.lat;
+  panel.dataset.featureLon = feature.lon;
+}
+
+function closeFeaturePanel() {
+  document.getElementById('featurePanel').classList.add('hidden');
+}
+
+// ============================================================
+// PANEL DRAG AND RESIZE
+// ============================================================
+function makePanelDraggable(panelId) {
+  const panel = document.getElementById(panelId);
+  const header = panel.querySelector('.panel-header');
+  let isDragging = false;
+  let currentX;
+  let currentY;
+  let initialX;
+  let initialY;
+
+  header.addEventListener('mousedown', (e) => {
+    // Don't drag if clicking on close button
+    if (e.target.closest('.panel-close-btn')) {
+      return;
+    }
+
+    isDragging = true;
+    initialX = e.clientX - panel.offsetLeft;
+    initialY = e.clientY - panel.offsetTop;
+
+    panel.style.transition = 'none';
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+      e.preventDefault();
+      currentX = e.clientX - initialX;
+      currentY = e.clientY - initialY;
+
+      // Keep panel within viewport
+      const maxX = window.innerWidth - panel.offsetWidth;
+      const maxY = window.innerHeight - panel.offsetHeight;
+
+      currentX = Math.max(0, Math.min(currentX, maxX));
+      currentY = Math.max(0, Math.min(currentY, maxY));
+
+      panel.style.left = currentX + 'px';
+      panel.style.top = currentY + 'px';
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+    }
+  });
+}
+
+function makePanelResizable(panelId) {
+  const panel = document.getElementById(panelId);
+  const resizeHandle = panel.querySelector('.resize-handle');
+  let isResizing = false;
+  let startX, startY, startWidth, startHeight;
+
+  resizeHandle.addEventListener('mousedown', (e) => {
+    isResizing = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    startWidth = parseInt(getComputedStyle(panel).width, 10);
+    startHeight = parseInt(getComputedStyle(panel).height, 10);
+
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (isResizing) {
+      const width = startWidth + (e.clientX - startX);
+      const height = startHeight + (e.clientY - startY);
+
+      // Apply min/max constraints
+      const minWidth = 300;
+      const maxWidth = window.innerWidth * 0.9;
+      const minHeight = 200;
+      const maxHeight = window.innerHeight * 0.9;
+
+      panel.style.width = Math.max(minWidth, Math.min(width, maxWidth)) + 'px';
+      panel.style.height = Math.max(minHeight, Math.min(height, maxHeight)) + 'px';
+      panel.style.maxWidth = 'none';
+      panel.style.maxHeight = 'none';
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isResizing) {
+      isResizing = false;
+    }
+  });
 }
 
 // ============================================================
@@ -1293,6 +1729,18 @@ function onKeyDown(event) {
     updateVisibility();
   }
   
+  // Features
+  if (key === 'c') {
+    state.showCraters = !state.showCraters;
+    document.getElementById('toggleCraters').checked = state.showCraters;
+    updateResourceVisibility();
+  }
+  if (key === 'b') {
+    state.showMaria = !state.showMaria;
+    document.getElementById('toggleMaria').checked = state.showMaria;
+    updateResourceVisibility();
+  }
+
   // Resources
   if (key === 'w') {
     state.showWater = !state.showWater;
@@ -1351,6 +1799,18 @@ function onKeyDown(event) {
     event.preventDefault();
   }
   
+  // Visual Settings
+  if (key === 'q') {
+    const modal = document.getElementById('visualSettingsModal');
+    const isHidden = modal.classList.contains('hidden');
+    if (isHidden) {
+      modal.classList.remove('hidden');
+      updateVisualSettingsUI();
+    } else {
+      modal.classList.add('hidden');
+    }
+  }
+
   // Help
   if (key === 'd') {
     state.showHelp = !state.showHelp;
@@ -1424,6 +1884,16 @@ function bindUI() {
   document.getElementById('toggleArtifacts').addEventListener('change', (e) => {
     state.showArtifacts = e.target.checked;
     updateArtifactVisibility();
+  });
+
+  // Feature toggles
+  document.getElementById('toggleCraters').addEventListener('change', (e) => {
+    state.showCraters = e.target.checked;
+    updateResourceVisibility();
+  });
+  document.getElementById('toggleMaria').addEventListener('change', (e) => {
+    state.showMaria = e.target.checked;
+    updateResourceVisibility();
   });
 
   // Resource toggles
@@ -1513,6 +1983,330 @@ function bindUI() {
       showTrajectory(artifact);
     }
   });
+
+  // Feature panel buttons
+  document.getElementById('featurePanelClose').addEventListener('click', closeFeaturePanel);
+  document.getElementById('featurePanelFocus').addEventListener('click', () => {
+    const panel = document.getElementById('featurePanel');
+    const lat = parseFloat(panel.dataset.featureLat);
+    const lon = parseFloat(panel.dataset.featureLon);
+    focusOnCoords(lat, lon);
+  });
+
+  // Make panels draggable and resizable
+  makePanelDraggable('missionPanel');
+  makePanelDraggable('featurePanel');
+  makePanelResizable('missionPanel');
+  makePanelResizable('featurePanel');
+
+  // Visual Settings Modal
+  bindVisualSettingsUI();
+}
+
+function bindVisualSettingsUI() {
+  const modal = document.getElementById('visualSettingsModal');
+  const openButton = document.getElementById('openVisualSettings');
+
+  console.log('🎛️ Binding visual settings UI...');
+  console.log('Modal element:', modal);
+  console.log('Open button element:', openButton);
+
+  if (!modal) {
+    console.error('❌ Visual Settings Modal not found!');
+    return;
+  }
+
+  if (!openButton) {
+    console.error('❌ Visual Settings Button not found!');
+    return;
+  }
+
+  // Open/Close
+  openButton.addEventListener('click', () => {
+    console.log('🎛️ Visual settings button clicked!');
+    modal.classList.remove('hidden');
+    updateVisualSettingsUI();
+  });
+
+  document.getElementById('closeVisualSettings').addEventListener('click', () => {
+    modal.classList.add('hidden');
+  });
+
+  // Click outside to close
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.classList.add('hidden');
+    }
+  });
+
+  // Starfield controls
+  document.getElementById('toggleStarfield').addEventListener('change', (e) => {
+    state.visualSettings.starfieldEnabled = e.target.checked;
+  });
+
+  document.getElementById('starSize').addEventListener('input', (e) => {
+    state.visualSettings.starSize = parseFloat(e.target.value);
+    document.getElementById('starSizeValue').textContent = e.target.value;
+  });
+
+  document.getElementById('starOpacity').addEventListener('input', (e) => {
+    state.visualSettings.starOpacity = parseFloat(e.target.value);
+    document.getElementById('starOpacityValue').textContent = Math.round(e.target.value * 100) + '%';
+  });
+
+  document.getElementById('starCount').addEventListener('input', (e) => {
+    state.visualSettings.starCount = parseInt(e.target.value);
+    document.getElementById('starCountValue').textContent = e.target.value;
+  });
+
+  // Lighting controls
+  document.getElementById('ambientIntensity').addEventListener('input', (e) => {
+    state.visualSettings.ambientIntensity = parseFloat(e.target.value);
+    document.getElementById('ambientIntensityValue').textContent = e.target.value;
+  });
+
+  document.getElementById('sunIntensity').addEventListener('input', (e) => {
+    state.visualSettings.sunIntensity = parseFloat(e.target.value);
+    document.getElementById('sunIntensityValue').textContent = e.target.value;
+  });
+
+  document.getElementById('fillIntensity').addEventListener('input', (e) => {
+    state.visualSettings.fillIntensity = parseFloat(e.target.value);
+    document.getElementById('fillIntensityValue').textContent = e.target.value;
+  });
+
+  document.getElementById('pointIntensity').addEventListener('input', (e) => {
+    state.visualSettings.pointIntensity = parseFloat(e.target.value);
+    document.getElementById('pointIntensityValue').textContent = e.target.value;
+  });
+
+  // Surface controls
+  document.getElementById('toggleTexture').addEventListener('change', (e) => {
+    state.visualSettings.textureEnabled = e.target.checked;
+  });
+
+  document.getElementById('surfaceRoughness').addEventListener('input', (e) => {
+    state.visualSettings.surfaceRoughness = parseFloat(e.target.value);
+    document.getElementById('surfaceRoughnessValue').textContent = e.target.value;
+  });
+
+  document.getElementById('baseBrightness').addEventListener('input', (e) => {
+    state.visualSettings.baseBrightness = parseInt(e.target.value);
+    document.getElementById('baseBrightnessValue').textContent = e.target.value;
+  });
+
+  document.getElementById('elevationIntensity').addEventListener('input', (e) => {
+    state.visualSettings.elevationIntensity = parseFloat(e.target.value);
+    document.getElementById('elevationIntensityValue').textContent = e.target.value;
+  });
+
+  // Renderer controls
+  document.getElementById('toggleToneMapping').addEventListener('change', (e) => {
+    state.visualSettings.toneMappingEnabled = e.target.checked;
+  });
+
+  document.getElementById('toneExposure').addEventListener('input', (e) => {
+    state.visualSettings.toneExposure = parseFloat(e.target.value);
+    document.getElementById('toneExposureValue').textContent = e.target.value;
+  });
+
+  document.getElementById('pixelRatio').addEventListener('input', (e) => {
+    state.visualSettings.pixelRatio = parseFloat(e.target.value);
+    document.getElementById('pixelRatioValue').textContent = e.target.value;
+  });
+
+  // Preset buttons
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const preset = btn.dataset.preset;
+      applyVisualPreset(preset);
+      updateVisualSettingsUI();
+    });
+  });
+
+  // Apply button
+  document.getElementById('applyVisualSettings').addEventListener('click', () => {
+    applyVisualSettings();
+    modal.classList.add('hidden');
+  });
+
+  // Reset button
+  document.getElementById('resetVisualSettings').addEventListener('click', () => {
+    applyVisualPreset('default');
+    updateVisualSettingsUI();
+  });
+}
+
+function updateVisualSettingsUI() {
+  // Update all UI elements to match current state
+  const vs = state.visualSettings;
+
+  document.getElementById('toggleStarfield').checked = vs.starfieldEnabled;
+  document.getElementById('starSize').value = vs.starSize;
+  document.getElementById('starSizeValue').textContent = vs.starSize;
+  document.getElementById('starOpacity').value = vs.starOpacity;
+  document.getElementById('starOpacityValue').textContent = Math.round(vs.starOpacity * 100) + '%';
+  document.getElementById('starCount').value = vs.starCount;
+  document.getElementById('starCountValue').textContent = vs.starCount;
+
+  document.getElementById('ambientIntensity').value = vs.ambientIntensity;
+  document.getElementById('ambientIntensityValue').textContent = vs.ambientIntensity;
+  document.getElementById('sunIntensity').value = vs.sunIntensity;
+  document.getElementById('sunIntensityValue').textContent = vs.sunIntensity;
+  document.getElementById('fillIntensity').value = vs.fillIntensity;
+  document.getElementById('fillIntensityValue').textContent = vs.fillIntensity;
+  document.getElementById('pointIntensity').value = vs.pointIntensity;
+  document.getElementById('pointIntensityValue').textContent = vs.pointIntensity;
+
+  document.getElementById('toggleTexture').checked = vs.textureEnabled;
+  document.getElementById('surfaceRoughness').value = vs.surfaceRoughness;
+  document.getElementById('surfaceRoughnessValue').textContent = vs.surfaceRoughness;
+  document.getElementById('baseBrightness').value = vs.baseBrightness;
+  document.getElementById('baseBrightnessValue').textContent = vs.baseBrightness;
+  document.getElementById('elevationIntensity').value = vs.elevationIntensity;
+  document.getElementById('elevationIntensityValue').textContent = vs.elevationIntensity;
+
+  document.getElementById('toggleToneMapping').checked = vs.toneMappingEnabled;
+  document.getElementById('toneExposure').value = vs.toneExposure;
+  document.getElementById('toneExposureValue').textContent = vs.toneExposure;
+  document.getElementById('pixelRatio').value = vs.pixelRatio;
+  document.getElementById('pixelRatioValue').textContent = vs.pixelRatio;
+}
+
+function applyVisualPreset(preset) {
+  const vs = state.visualSettings;
+
+  if (preset === 'realistic') {
+    // Photorealistic preset
+    vs.starfieldEnabled = true;
+    vs.starSize = 1.5;
+    vs.starOpacity = 0.8;
+    vs.starCount = 12000;
+    vs.ambientIntensity = 0.15;
+    vs.sunIntensity = 2.5;
+    vs.fillIntensity = 0.1;
+    vs.pointIntensity = 0.2;
+    vs.textureEnabled = true;
+    vs.surfaceRoughness = 0.98;
+    vs.baseBrightness = 180;
+    vs.elevationIntensity = 1.2;
+    vs.toneMappingEnabled = true;
+    vs.toneExposure = 1.5;
+    vs.pixelRatio = 2.0;
+  } else if (preset === 'bright') {
+    // Bright, clear viewing preset
+    vs.starfieldEnabled = true;
+    vs.starSize = 2.0;
+    vs.starOpacity = 0.6;
+    vs.starCount = 5000;
+    vs.ambientIntensity = 0.6;
+    vs.sunIntensity = 2.0;
+    vs.fillIntensity = 0.5;
+    vs.pointIntensity = 0.8;
+    vs.textureEnabled = true;
+    vs.surfaceRoughness = 0.9;
+    vs.baseBrightness = 230;
+    vs.elevationIntensity = 0.8;
+    vs.toneMappingEnabled = true;
+    vs.toneExposure = 1.0;
+    vs.pixelRatio = 2.0;
+  } else if (preset === 'space') {
+    // Deep space, dramatic preset
+    vs.starfieldEnabled = true;
+    vs.starSize = 3.0;
+    vs.starOpacity = 1.0;
+    vs.starCount = 15000;
+    vs.ambientIntensity = 0.05;
+    vs.sunIntensity = 3.0;
+    vs.fillIntensity = 0.05;
+    vs.pointIntensity = 0.1;
+    vs.textureEnabled = true;
+    vs.surfaceRoughness = 0.95;
+    vs.baseBrightness = 150;
+    vs.elevationIntensity = 1.5;
+    vs.toneMappingEnabled = true;
+    vs.toneExposure = 1.8;
+    vs.pixelRatio = 2.0;
+  } else {
+    // Default preset
+    vs.starfieldEnabled = true;
+    vs.starSize = 2.5;
+    vs.starOpacity = 1.0;
+    vs.starCount = 8000;
+    vs.ambientIntensity = 0.4;
+    vs.sunIntensity = 1.8;
+    vs.fillIntensity = 0.3;
+    vs.pointIntensity = 0.5;
+    vs.textureEnabled = true;
+    vs.surfaceRoughness = 0.95;
+    vs.baseBrightness = 204;
+    vs.elevationIntensity = 1.0;
+    vs.toneMappingEnabled = true;
+    vs.toneExposure = 1.2;
+    vs.pixelRatio = 2.0;
+  }
+}
+
+function applyVisualSettings() {
+  const vs = state.visualSettings;
+
+  // Apply starfield settings
+  if (starfield && starfieldMaterial) {
+    starfield.visible = vs.starfieldEnabled;
+    starfieldMaterial.size = vs.starSize;
+    starfieldMaterial.opacity = vs.starOpacity;
+    starfieldMaterial.needsUpdate = true;
+
+    // If star count changed, recreate starfield
+    const currentStarCount = starfield.geometry.attributes.position.count;
+    if (currentStarCount !== vs.starCount) {
+      scene.remove(starfield);
+      createStarfield();
+    }
+  }
+
+  // Apply lighting settings
+  if (ambientLight) ambientLight.intensity = vs.ambientIntensity;
+  if (sunLight) sunLight.intensity = vs.sunIntensity;
+  if (fillLight) fillLight.intensity = vs.fillIntensity;
+  if (pointLight) pointLight.intensity = vs.pointIntensity;
+
+  // Apply surface settings
+  if (terrainMaterial) {
+    terrainMaterial.roughness = vs.surfaceRoughness;
+    terrainMaterial.color.setRGB(
+      vs.baseBrightness / 255,
+      vs.baseBrightness / 255,
+      vs.baseBrightness / 255
+    );
+
+    // Toggle texture
+    if (vs.textureEnabled && !terrainMaterial.map) {
+      // Reload texture
+      const textureLoader = new THREE.TextureLoader();
+      terrainMaterial.map = textureLoader.load(
+        'https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/textures/planets/moon_1024.jpg',
+        (texture) => {
+          texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+          texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+          terrainMaterial.needsUpdate = true;
+        }
+      );
+    } else if (!vs.textureEnabled) {
+      terrainMaterial.map = null;
+    }
+
+    terrainMaterial.needsUpdate = true;
+  }
+
+  // Apply renderer settings
+  if (renderer) {
+    renderer.toneMapping = vs.toneMappingEnabled ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+    renderer.toneMappingExposure = vs.toneExposure;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, vs.pixelRatio));
+  }
+
+  console.log('✓ Visual settings applied');
 }
 
 // ============================================================

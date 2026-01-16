@@ -33,6 +33,10 @@
       <h3>TERRAIN MODE (V)</h3>
       <div id="terrainMode">Hybrid</div>
       
+      <h3>FEATURES</h3>
+      <label style="color: #ff8844;"><input type="checkbox" id="toggleCraters"> Craters (C)</label>
+      <label style="color: #4488ff;"><input type="checkbox" id="toggleMaria"> Maria (B)</label>
+
       <h3>RESOURCES</h3>
       <label class="resource water"><input type="checkbox" id="toggleWater"> Water Ice (W)</label>
       <label class="resource helium"><input type="checkbox" id="toggleHelium"> Helium-3 (I)</label>
@@ -43,6 +47,9 @@
       
       <h3>NAVIGATION</h3>
       <div class="small-text">[R] Reset • [S] Surveyor 3 • [D] Help</div>
+
+      <h3>ADVANCED</h3>
+      <button id="openVisualSettings" class="visual-settings-btn">Visual Settings (Q)</button>
     </div>
     
     <div id="search-panel">
@@ -66,10 +73,10 @@
   <div id="tooltip"></div>
 
   <!-- Mission Details Panel -->
-  <div id="missionPanel" class="hidden">
+  <div id="missionPanel" class="hidden details-panel">
     <div class="panel-header">
       <h2 id="panelTitle">Mission Name</h2>
-      <button id="panelClose">&times;</button>
+      <button id="panelClose" class="panel-close-btn">&times;</button>
     </div>
     <div class="panel-content">
       <div class="mission-badge">
@@ -86,6 +93,10 @@
           <span id="panelStatus" class="stat-value"></span>
         </div>
         <div class="stat-item">
+          <span class="stat-label">Mass:</span>
+          <span id="panelMass" class="stat-value"></span>
+        </div>
+        <div class="stat-item">
           <span class="stat-label">Location:</span>
           <span id="panelCoords" class="stat-value"></span>
         </div>
@@ -98,6 +109,145 @@
       <div class="panel-actions">
         <button id="panelFocus" class="action-btn">Focus on Mission</button>
         <button id="panelTrajectory" class="action-btn">Show Trajectory</button>
+        <a id="panelLearnMore" class="action-btn" href="#" target="_blank" style="display: none; text-align: center; text-decoration: none; line-height: 1.8;">Learn More</a>
+      </div>
+    </div>
+    <div class="resize-handle"></div>
+  </div>
+
+  <!-- Feature Details Panel (for craters, maria, resources) -->
+  <div id="featurePanel" class="hidden details-panel">
+    <div class="panel-header">
+      <h2 id="featurePanelTitle">Feature Name</h2>
+      <button id="featurePanelClose" class="panel-close-btn">&times;</button>
+    </div>
+    <div class="panel-content">
+      <div class="mission-badge">
+        <div id="featurePanelType" class="operator-badge"></div>
+      </div>
+      <div class="mission-stats" id="featurePanelStats">
+        <!-- Stats will be dynamically populated -->
+      </div>
+      <div id="featurePanelDescription" class="mission-description"></div>
+      <div class="panel-actions">
+        <button id="featurePanelFocus" class="action-btn">Focus on Feature</button>
+        <a id="featurePanelLearnMore" class="action-btn" href="#" target="_blank" style="display: none; text-align: center; text-decoration: none; line-height: 1.8;">Learn More</a>
+      </div>
+    </div>
+    <div class="resize-handle"></div>
+  </div>
+
+  <!-- Visual Settings Modal -->
+  <div id="visualSettingsModal" class="hidden">
+    <div class="modal-content settings-modal">
+      <div class="settings-header">
+        <h2>ADVANCED VISUAL SETTINGS</h2>
+        <button id="closeVisualSettings" class="panel-close-btn">&times;</button>
+      </div>
+
+      <div class="settings-content">
+        <div class="settings-section">
+          <h3>🌟 STARFIELD</h3>
+          <label class="setting-item">
+            <input type="checkbox" id="toggleStarfield" checked>
+            <span>Enable Starfield</span>
+          </label>
+          <label class="setting-item">
+            <span>Star Size</span>
+            <input type="range" id="starSize" min="0.5" max="5" step="0.1" value="2.5">
+            <span id="starSizeValue">2.5</span>
+          </label>
+          <label class="setting-item">
+            <span>Star Opacity</span>
+            <input type="range" id="starOpacity" min="0" max="1" step="0.05" value="1.0">
+            <span id="starOpacityValue">100%</span>
+          </label>
+          <label class="setting-item">
+            <span>Star Count</span>
+            <input type="range" id="starCount" min="1000" max="20000" step="1000" value="8000">
+            <span id="starCountValue">8000</span>
+          </label>
+        </div>
+
+        <div class="settings-section">
+          <h3>💡 LIGHTING</h3>
+          <label class="setting-item">
+            <span>Ambient Light</span>
+            <input type="range" id="ambientIntensity" min="0" max="1" step="0.05" value="0.4">
+            <span id="ambientIntensityValue">0.4</span>
+          </label>
+          <label class="setting-item">
+            <span>Sun Intensity</span>
+            <input type="range" id="sunIntensity" min="0" max="5" step="0.1" value="1.8">
+            <span id="sunIntensityValue">1.8</span>
+          </label>
+          <label class="setting-item">
+            <span>Fill Light</span>
+            <input type="range" id="fillIntensity" min="0" max="1" step="0.05" value="0.3">
+            <span id="fillIntensityValue">0.3</span>
+          </label>
+          <label class="setting-item">
+            <span>Point Light</span>
+            <input type="range" id="pointIntensity" min="0" max="2" step="0.1" value="0.5">
+            <span id="pointIntensityValue">0.5</span>
+          </label>
+        </div>
+
+        <div class="settings-section">
+          <h3>🌙 MOON SURFACE</h3>
+          <label class="setting-item">
+            <input type="checkbox" id="toggleTexture" checked>
+            <span>Enable NASA Texture</span>
+          </label>
+          <label class="setting-item">
+            <span>Surface Roughness</span>
+            <input type="range" id="surfaceRoughness" min="0" max="1" step="0.05" value="0.95">
+            <span id="surfaceRoughnessValue">0.95</span>
+          </label>
+          <label class="setting-item">
+            <span>Base Color Brightness</span>
+            <input type="range" id="baseBrightness" min="0" max="255" step="5" value="204">
+            <span id="baseBrightnessValue">204</span>
+          </label>
+          <label class="setting-item">
+            <span>Elevation Color Intensity</span>
+            <input type="range" id="elevationIntensity" min="0" max="2" step="0.1" value="1.0">
+            <span id="elevationIntensityValue">1.0</span>
+          </label>
+        </div>
+
+        <div class="settings-section">
+          <h3>🎨 RENDERER</h3>
+          <label class="setting-item">
+            <input type="checkbox" id="toggleToneMapping" checked>
+            <span>ACES Tone Mapping</span>
+          </label>
+          <label class="setting-item">
+            <span>Tone Exposure</span>
+            <input type="range" id="toneExposure" min="0.5" max="3" step="0.1" value="1.2">
+            <span id="toneExposureValue">1.2</span>
+          </label>
+          <label class="setting-item">
+            <span>Pixel Ratio</span>
+            <input type="range" id="pixelRatio" min="1" max="3" step="0.5" value="2">
+            <span id="pixelRatioValue">2.0</span>
+          </label>
+        </div>
+
+        <div class="settings-section">
+          <h3>🎯 PRESETS</h3>
+          <div class="preset-buttons">
+            <button class="preset-btn" data-preset="realistic">Photorealistic</button>
+            <button class="preset-btn" data-preset="bright">Bright View</button>
+            <button class="preset-btn" data-preset="space">Deep Space</button>
+            <button class="preset-btn" data-preset="default">Default</button>
+          </div>
+        </div>
+
+        <div class="settings-actions">
+          <button id="resetVisualSettings" class="action-btn">Reset to Defaults</button>
+          <button id="applyVisualSettings" class="action-btn primary">Apply Changes</button>
+        </div>
       </div>
     </div>
   </div>
@@ -131,6 +281,7 @@
           <div>S - Surveyor 3</div>
           <div>/ - Search</div>
           <div>1-9 - Quick Focus</div>
+          <div>Q - Visual Settings</div>
           <div>D - This Help</div>
         </div>
       </div>
