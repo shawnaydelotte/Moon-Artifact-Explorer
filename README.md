@@ -2,6 +2,12 @@
 
 An interactive 3D visualization of artificial objects on the Moon using Three.js, featuring all lunar missions from 1959 to 2025.
 
+## 📺 Demo
+
+![Moon Explorer Demo](demo-assets/moon-explorer-demo.gif)
+
+*Interactive demonstration showing resource overlays, search functionality, and advanced visual settings*
+
 ## 🚀 Live Demo
 
 Deploy to GitHub Pages and visit: `https://[your-username].github.io/moon-explorer/`
