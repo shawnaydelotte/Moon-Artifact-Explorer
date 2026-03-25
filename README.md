@@ -10,7 +10,7 @@ An interactive 3D visualization of artificial objects on the Moon using Three.js
 
 ## 🚀 Live Demo
 
-Deploy to GitHub Pages and visit: `https://[your-username].github.io/moon-explorer/`
+ `https://shawnaydelotte.github.io/Moon-Artifact-Explorer/`
 
 ## ✨ Features
 
